@@ -9,9 +9,9 @@ import MenuList from './menulist.astro';
 const currentPath = Astro.url.pathname;
 let pageTitle = "Menu"; // Default title
 
-const pageTitles = {
+const pageTitles: {[key: string]: string} = {
+  "/": "tar",
   "/orai": "orai",
-  "/tarai": "tar",
   "/a": "a",
   "/pin": "pin",
   "/products": "products",
@@ -34,7 +34,7 @@ pageTitle = pageTitles[currentPath] || pageTitle;
     <a href="/orai" class="icon-link" aria-label="Orai">
       <span class="icon" set:html={TriangleIcon} />
     </a>
-    <a href="/tarai" class="icon-link" aria-label="Tar AI">
+    <a href="/" class="icon-link" aria-label="Tar AI">
       <span class="icon" set:html={SquareIcon} />
     </a>
     <a href="/a" class="icon-link" aria-label="A">
