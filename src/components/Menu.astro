@@ -10,17 +10,17 @@ const currentPath = Astro.url.pathname;
 let pageTitle = "Menu"; // Default title
 
 const pageTitles = {
-  "/orai": "Orai",
-  "/tarai": "Tar AI",
-  "/a": "A",
-  "/pin": "Pin",
-  "/products": "Products",
-  "/reports": "Reports",
-  "/files": "Files",
-  "/posts": "Posts",
-  "/pathai": "Pathai",
-  "/settings": "Settings",
-  "/links": "Links"
+  "/orai": "orai",
+  "/tarai": "tar",
+  "/a": "a",
+  "/pin": "pin",
+  "/products": "products",
+  "/reports": "reports",
+  "/files": "files",
+  "/posts": "posts",
+  "/pathai": "pathai",
+  "/settings": "settings",
+  "/links": "links"
 };
 
 pageTitle = pageTitles[currentPath] || pageTitle;
