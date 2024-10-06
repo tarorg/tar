@@ -1,27 +1,58 @@
 ---
 import Layout from '../layouts/Layout.astro';
 import Menu from '../components/Menu.astro';
+
+const productInstances = [
+  { sku: "SKU001-BLK-S", name: "Wireless Earphones", qty: 20, variant: "Black, Small" },
+  { sku: "SKU001-BLK-M", name: "Wireless Earphones", qty: 25, variant: "Black, Medium" },
+  { sku: "SKU001-BLK-L", name: "Wireless Earphones", qty: 15, variant: "Black, Large" },
+  { sku: "SKU001-RED-S", name: "Wireless Earphones", qty: 10, variant: "Red, Small" },
+  { sku: "SKU001-RED-M", name: "Wireless Earphones", qty: 15, variant: "Red, Medium" },
+  { sku: "SKU001-RED-L", name: "Wireless Earphones", qty: 5, variant: "Red, Large" },
+  { sku: "SKU001-BLU-S", name: "Wireless Earphones", qty: 8, variant: "Blue, Small" },
+  { sku: "SKU001-BLU-M", name: "Wireless Earphones", qty: 12, variant: "Blue, Medium" },
+  { sku: "SKU001-BLU-L", name: "Wireless Earphones", qty: 6, variant: "Blue, Large" }
+];
 ---
 
 <Layout title="products">
   <Menu />
-  <main>
+  <main style="max-width: 1200px; margin: 0 auto; padding: 1rem;">
     <div class="search-container">
       <div class="search-bar">
         <span class="material-icons">search</span>
-        <input type="text" placeholder="Search products" class="search-input">
+        <input type="text" id="searchInput" placeholder="Search product variants" class="search-input">
       </div>
+    </div>
+
+      <div style="background-color: white; border-radius: 0.5rem; box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1); overflow: hidden;">
+      <table id="productTable" style="width: 100%; border-collapse: separate; border-spacing: 0; border: 1px solid #e5e7eb; border-radius: 0.5rem;">
+        <thead>
+          <tr>
+            <th style="padding: 0.75rem 1rem; text-align: left; font-weight: 600; border-bottom: 1px solid #e5e7eb;">SKU</th>
+            <th style="padding: 0.75rem 1rem; text-align: left; font-weight: 600; border-bottom: 1px solid #e5e7eb; border-left: 1px solid #e5e7eb;">Item Name</th>
+            <th style="padding: 0.75rem 1rem; text-align: left; font-weight: 600; border-bottom: 1px solid #e5e7eb; border-left: 1px solid #e5e7eb;">Qty</th>
+            <th style="padding: 0.75rem 1rem; text-align: left; font-weight: 600; border-bottom: 1px solid #e5e7eb; border-left: 1px solid #e5e7eb;">Variant</th>
+          </tr>
+        </thead>
+        <tbody>
+          {productInstances.map((product, index) => (
+            <tr>
+              <td style="padding: 0.75rem 1rem; font-weight: 500; border-bottom: 1px solid #e5e7eb;">{product.sku}</td>
+              <td style="padding: 0.75rem 1rem; border-bottom: 1px solid #e5e7eb; border-left: 1px solid #e5e7eb;">{product.name}</td>
+              <td style="padding: 0.75rem 1rem; border-bottom: 1px solid #e5e7eb; border-left: 1px solid #e5e7eb;">{product.qty}</td>
+              <td style="padding: 0.75rem 1rem; border-bottom: 1px solid #e5e7eb; border-left: 1px solid #e5e7eb;">{product.variant}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   </main>
 </Layout>
 
 <style>
-  main {
-    padding: 1rem;
-  }
-
   .search-container {
-    margin: 0rem 0;
+    margin: 2rem 0;
   }
 
   .search-bar {
@@ -54,3 +85,24 @@ import Menu from '../components/Menu.astro';
 </style>
 
 <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+
+<script>
+  const searchInput = document.getElementById('searchInput');
+  const productTable = document.getElementById('productTable');
+  const rows = productTable.getElementsByTagName('tr');
+
+  searchInput.addEventListener('input', function() {
+    const searchTerm = this.value.toLowerCase();
+
+    for (let i = 1; i < rows.length; i++) {
+      const row = rows[i];
+      const rowData = row.textContent.toLowerCase();
+      
+      if (rowData.includes(searchTerm)) {
+        row.style.display = '';
+      } else {
+        row.style.display = 'none';
+      }
+    }
+  });
+</script>

@@ -1,0 +1,101 @@
+---
+import Layout from '../layouts/Layout.astro';
+import Menu from '../components/Menu.astro';
+
+const productCore = {
+  "Name": "",
+  "Image": "",
+  "Type": "Variant Item",
+  "Category": "",
+  "Description": "Notes on product",
+  "Unit": "",
+  "Product Support": "Documents, URLs, Warranty",
+  "Analytics": "Product views, sales, conversion rates",
+  "Compliance": "Certifications",
+  "Localization": "Product languages",
+  "Sustainability": "Energy efficiency, renewable",
+  "Logistics": "Shipping carrier, shipping weight"
+};
+
+const variantAttributes = {
+  color: "Red, Yellow, Green, Black",
+  size: "Small, Medium, Large",
+  weight: "250g",
+  pattern: "Solid"
+};
+
+const productInstances = [
+  { sku: "SKU001", name: "Wireless Bluetooth Headphones", qty: 50 },
+  { sku: "SKU002", name: "Smart Fitness Tracker", qty: 30 },
+  { sku: "SKU003", name: "Portable Power Bank", qty: 100 },
+  { sku: "SKU004", name: "Wireless Charging Pad", qty: 75 },
+  { sku: "SKU005", name: "Noise-Canceling Earbuds", qty: 25 },
+];
+---
+
+<Layout title="Product">
+  <Menu />
+  <main style="max-width: 1200px; margin: 0 auto; padding: 1rem;">
+    <h1 style="font-size: 20px; font-weight: bold; margin-bottom: 1rem;">core</h1>
+    <div style="background-color: white; border-radius: 0.5rem; box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1); margin-bottom: 2rem; overflow: hidden;">
+      <table style="width: 100%; border-collapse: collapse;">
+        <thead>
+          <tr style="border-bottom: 1px solid #e5e7eb;">
+            <th style="padding: 0.75rem 1rem; text-align: left; font-weight: 600;">Type</th>
+            <th style="padding: 0.75rem 1rem; text-align: left; font-weight: 600; border-left: 1px solid #e5e7eb;">Values</th>
+          </tr>
+        </thead>
+        <tbody>
+          {Object.entries(productCore).map(([key, value], index) => (
+            <tr style={index !== Object.entries(productCore).length - 1 ? "border-bottom: 1px solid #e5e7eb;" : ""}>
+              <td style="padding: 0.75rem 1rem; font-weight: 500;">{key}</td>
+              <td style="padding: 0.75rem 1rem; border-left: 1px solid #e5e7eb;">{value}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+
+    <h2 style="font-size: 20px; font-weight: bold; margin-bottom: 1rem;">variant</h2>
+    <div style="background-color: white; border-radius: 0.5rem; box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1); margin-bottom: 2rem; overflow: hidden;">
+      <table style="width: 100%; border-collapse: collapse;">
+        <thead>
+          <tr style="border-bottom: 1px solid #e5e7eb;">
+            <th style="padding: 0.75rem 1rem; text-align: left; font-weight: 600;">Attribute</th>
+            <th style="padding: 0.75rem 1rem; text-align: left; font-weight: 600; border-left: 1px solid #e5e7eb;">Value</th>
+          </tr>
+        </thead>
+        <tbody>
+          {Object.entries(variantAttributes).map(([key, value], index) => (
+            <tr style={index !== Object.entries(variantAttributes).length - 1 ? "border-bottom: 1px solid #e5e7eb;" : ""}>
+              <td style="padding: 0.75rem 1rem; font-weight: 500;">{key.charAt(0).toUpperCase() + key.slice(1)}</td>
+              <td style="padding: 0.75rem 1rem; border-left: 1px solid #e5e7eb;">{value}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+
+    <h2 style="font-size: 20px; font-weight: bold; margin-bottom: 1rem;">instances</h2>
+    <div style="background-color: white; border-radius: 0.5rem; box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1); overflow: hidden;">
+      <table style="width: 100%; border-collapse: collapse;">
+        <thead>
+          <tr style="border-bottom: 1px solid #e5e7eb;">
+            <th style="padding: 0.75rem 1rem; text-align: left; font-weight: 600;">SKU</th>
+            <th style="padding: 0.75rem 1rem; text-align: left; font-weight: 600; border-left: 1px solid #e5e7eb;">Item Name</th>
+            <th style="padding: 0.75rem 1rem; text-align: left; font-weight: 600; border-left: 1px solid #e5e7eb;">Qty</th>
+          </tr>
+        </thead>
+        <tbody>
+          {productInstances.map((product, index) => (
+            <tr style={index !== productInstances.length - 1 ? "border-bottom: 1px solid #e5e7eb;" : ""}>
+              <td style="padding: 0.75rem 1rem; font-weight: 500;">{product.sku}</td>
+              <td style="padding: 0.75rem 1rem; border-left: 1px solid #e5e7eb;">{product.name}</td>
+              <td style="padding: 0.75rem 1rem; border-left: 1px solid #e5e7eb;">{product.qty}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  </main>
+</Layout>

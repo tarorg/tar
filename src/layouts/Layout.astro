@@ -1,5 +1,5 @@
 ---
-import '../styles/global.css';
+import '../styles/global.css'; // This should include Tailwind CSS
 
 export interface Props {
 	title: string;
@@ -16,6 +16,9 @@ const { title } = Astro.props;
 		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
 		<meta name="generator" content={Astro.generator} />
 		<title>{title}</title>
+		<style is:global>
+			/* You can add any global styles here if needed */
+		</style>
 	</head>
 	<body>
 		<slot />
