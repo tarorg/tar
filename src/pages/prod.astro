@@ -36,9 +36,12 @@ const productInstances = [
 <Layout title="Product">
   <Menu />
   <main style="max-width: 1200px; margin: 0 auto; padding: 1rem;">
-    <h1 style="font-size: 20px; font-weight: bold; margin-bottom: 1rem;">core</h1>
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+      <h1 style="font-size: 20px; font-weight: bold;">core</h1>
+      <button class="button-tonal">Submit</button>
+    </div>
     <div style="background-color: white; border-radius: 0.5rem; box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1); margin-bottom: 2rem; overflow: hidden;">
-      <table style="width: 100%; border-collapse: collapse;">
+      <table id="coreTable" style="width: 100%; border-collapse: collapse;">
         <thead>
           <tr style="border-bottom: 1px solid #e5e7eb;">
             <th style="padding: 0.75rem 1rem; text-align: left; font-weight: 600;">Type</th>
@@ -49,7 +52,7 @@ const productInstances = [
           {Object.entries(productCore).map(([key, value], index) => (
             <tr style={index !== Object.entries(productCore).length - 1 ? "border-bottom: 1px solid #e5e7eb;" : ""}>
               <td style="padding: 0.75rem 1rem; font-weight: 500;">{key}</td>
-              <td style="padding: 0.75rem 1rem; border-left: 1px solid #e5e7eb;">{value}</td>
+              <td style="padding: 0.75rem 1rem; border-left: 1px solid #e5e7eb;" data-key={key}>{value}</td>
             </tr>
           ))}
         </tbody>
@@ -98,4 +101,205 @@ const productInstances = [
       </table>
     </div>
   </main>
+
+  <!-- Material 3 Bottom Sheet -->
+  <div id="bottomSheet" class="bottom-sheet">
+    <div class="scrim"></div>
+    <div class="bottom-sheet-container">
+      <div class="bottom-sheet-header">
+        <div class="bottom-sheet-drag-handle"></div>
+      </div>
+      <div class="bottom-sheet-content">
+        <h2 id="bottomSheetTitle" class="bottom-sheet-title"></h2>
+        <div class="text-field-container">
+          <input type="text" id="bottomSheetInput" class="text-field-input" placeholder=" " />
+          <label for="bottomSheetInput" class="text-field-label">Enter value</label>
+        </div>
+        <button id="bottomSheetSubmit" class="button-primary">Submit</button>
+      </div>
+    </div>
+  </div>
 </Layout>
+
+<style>
+  .bottom-sheet {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    pointer-events: none;
+    z-index: 1000;
+  }
+
+  .scrim {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.32);
+    opacity: 0;
+    transition: opacity 0.25s ease;
+  }
+
+  .bottom-sheet-container {
+    background-color: #fff;
+    border-radius: 28px 28px 0 0;
+    padding: 0 24px 24px;
+    transform: translateY(100%);
+    transition: transform 0.25s ease;
+  }
+
+  .bottom-sheet-header {
+    padding: 12px 0;
+    display: flex;
+    justify-content: center;
+  }
+
+  .bottom-sheet-drag-handle {
+    width: 32px;
+    height: 4px;
+    background-color: #C4C7C5;
+    border-radius: 2px;
+  }
+
+  .bottom-sheet-content {
+    padding-top: 16px;
+  }
+
+  .bottom-sheet-title {
+    font-size: 24px;
+    font-weight: 400;
+    margin-bottom: 16px;
+    color: #1D1B20;
+  }
+
+  .text-field-container {
+    position: relative;
+    margin-bottom: 24px;
+  }
+
+  .text-field-input {
+    width: 100%;
+    padding: 12px 16px;
+    font-size: 16px;
+    border: 1px solid #79747E;
+    border-radius: 4px;
+    background-color: #F4EFF4;
+    transition: border-color 0.2s, background-color 0.2s;
+  }
+
+  .text-field-input:focus {
+    outline: none;
+    border-color: #6750A4;
+    background-color: #FFFFFF;
+  }
+
+  .text-field-label {
+    position: absolute;
+    left: 16px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 16px;
+    color: #49454F;
+    transition: all 0.2s;
+    pointer-events: none;
+  }
+
+  .text-field-input:focus + .text-field-label,
+  .text-field-input:not(:placeholder-shown) + .text-field-label {
+    top: 0;
+    font-size: 12px;
+    background-color: #FFFFFF;
+    padding: 0 4px;
+  }
+
+  .button-primary {
+    background-color: #6750A4;
+    color: #FFFFFF;
+    border: none;
+    padding: 10px 24px;
+    font-size: 14px;
+    font-weight: 500;
+    border-radius: 100px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+  }
+
+  .button-primary:hover {
+    background-color: #7965AF;
+  }
+
+  .bottom-sheet.active {
+    pointer-events: auto;
+  }
+
+  .bottom-sheet.active .scrim {
+    opacity: 1;
+  }
+
+  .bottom-sheet.active .bottom-sheet-container {
+    transform: translateY(0);
+  }
+
+  .button-tonal {
+    background-color: #FFFFFF;
+    color: #1D192B;
+    border: 1px solid #79747E;
+    padding: 10px 24px;
+    font-size: 14px;
+    font-weight: 500;
+    border-radius: 20px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+  }
+
+  .button-tonal:hover {
+    background-color: #F4EFF4;
+  }
+
+  .button-tonal:active {
+    background-color: #E8DEF8;
+  }
+</style>
+
+<script>
+  const coreTable = document.getElementById('coreTable');
+  const bottomSheet = document.getElementById('bottomSheet');
+  const bottomSheetTitle = document.getElementById('bottomSheetTitle');
+  const bottomSheetInput = document.getElementById('bottomSheetInput');
+  const bottomSheetSubmit = document.getElementById('bottomSheetSubmit');
+
+  let currentCell = null;
+
+  coreTable.addEventListener('click', (e) => {
+    const cell = e.target.closest('td[data-key]');
+    if (cell) {
+      currentCell = cell;
+      const key = cell.dataset.key;
+      bottomSheetTitle.textContent = `Enter value for ${key}`;
+      bottomSheetInput.value = cell.textContent;
+      bottomSheet.classList.add('active');
+    }
+  });
+
+  bottomSheetSubmit.addEventListener('click', () => {
+    if (currentCell) {
+      currentCell.textContent = bottomSheetInput.value;
+      bottomSheet.classList.remove('active');
+      currentCell = null;
+    }
+  });
+
+  // Close bottom sheet when clicking on scrim
+  bottomSheet.addEventListener('click', (e) => {
+    if (e.target === bottomSheet || e.target.classList.contains('scrim')) {
+      bottomSheet.classList.remove('active');
+      currentCell = null;
+    }
+  });
+</script>
