@@ -1,18 +1,6 @@
 ---
 import Layout from '../layouts/Layout.astro';
 import Menu from '../components/Menu.astro';
-
-const productInstances = [
-  { sku: "SKU001-BLK-S", name: "Wireless Earphones", qty: 20, variant: "Black, Small" },
-  { sku: "SKU001-BLK-M", name: "Wireless Earphones", qty: 25, variant: "Black, Medium" },
-  { sku: "SKU001-BLK-L", name: "Wireless Earphones", qty: 15, variant: "Black, Large" },
-  { sku: "SKU001-RED-S", name: "Wireless Earphones", qty: 10, variant: "Red, Small" },
-  { sku: "SKU001-RED-M", name: "Wireless Earphones", qty: 15, variant: "Red, Medium" },
-  { sku: "SKU001-RED-L", name: "Wireless Earphones", qty: 5, variant: "Red, Large" },
-  { sku: "SKU001-BLU-S", name: "Wireless Earphones", qty: 8, variant: "Blue, Small" },
-  { sku: "SKU001-BLU-M", name: "Wireless Earphones", qty: 12, variant: "Blue, Medium" },
-  { sku: "SKU001-BLU-L", name: "Wireless Earphones", qty: 6, variant: "Blue, Large" }
-];
 ---
 
 <Layout title="products">
@@ -21,36 +9,37 @@ const productInstances = [
     <div class="search-container">
       <div class="search-bar">
         <span class="material-icons">search</span>
-        <input type="text" id="searchInput" placeholder="Search product variants" class="search-input">
+        <input type="text" id="searchInput" placeholder="Search products" class="search-input">
       </div>
     </div>
 
-      <div style="background-color: white; border-radius: 0.5rem; box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1); overflow: hidden;">
+    <div style="background-color: white; border-radius: 0.5rem; overflow: hidden;">
       <table id="productTable" style="width: 100%; border-collapse: separate; border-spacing: 0; border: 1px solid #e5e7eb; border-radius: 0.5rem;">
         <thead>
           <tr>
             <th style="padding: 0.75rem 1rem; text-align: left; font-weight: 600; border-bottom: 1px solid #e5e7eb;">SKU</th>
-            <th style="padding: 0.75rem 1rem; text-align: left; font-weight: 600; border-bottom: 1px solid #e5e7eb; border-left: 1px solid #e5e7eb;">Item Name</th>
+            <th style="padding: 0.75rem 1rem; text-align: left; font-weight: 600; border-bottom: 1px solid #e5e7eb; border-left: 1px solid #e5e7eb;">Name</th>
             <th style="padding: 0.75rem 1rem; text-align: left; font-weight: 600; border-bottom: 1px solid #e5e7eb; border-left: 1px solid #e5e7eb;">Qty</th>
-            <th style="padding: 0.75rem 1rem; text-align: left; font-weight: 600; border-bottom: 1px solid #e5e7eb; border-left: 1px solid #e5e7eb;">Variant</th>
           </tr>
         </thead>
-        <tbody>
-          {productInstances.map((product, index) => (
-            <tr>
-              <td style="padding: 0.75rem 1rem; font-weight: 500; border-bottom: 1px solid #e5e7eb;">{product.sku}</td>
-              <td style="padding: 0.75rem 1rem; border-bottom: 1px solid #e5e7eb; border-left: 1px solid #e5e7eb;">{product.name}</td>
-              <td style="padding: 0.75rem 1rem; border-bottom: 1px solid #e5e7eb; border-left: 1px solid #e5e7eb;">{product.qty}</td>
-              <td style="padding: 0.75rem 1rem; border-bottom: 1px solid #e5e7eb; border-left: 1px solid #e5e7eb;">{product.variant}</td>
-            </tr>
-          ))}
+        <tbody id="productTableBody">
+          <!-- Product rows will be inserted here by JavaScript -->
         </tbody>
       </table>
     </div>
   </main>
+
+  <!-- Material 3 FAB -->
+  <a href="/prod" class="fab">
+    <span class="material-icons">add</span>
+  </a>
 </Layout>
 
 <style>
+  main {
+    /* Padding removed */
+  }
+
   .search-container {
     margin: 2rem 0;
   }
@@ -82,27 +71,123 @@ const productInstances = [
   .search-input::placeholder {
     color: #5f6368;
   }
+
+  .fab {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    width: 56px;
+    height: 56px;
+    border-radius: 16px;
+    background-color: #FFFFFF;
+    color: #1D192B;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.3s ease;
+    text-decoration: none;
+    border: 1px solid #E0E0E0;
+  }
+
+  .fab:hover {
+    background-color: #F4EFF4;
+  }
+
+  .fab .material-icons {
+    font-size: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .product-name {
+    cursor: pointer;
+    transition: background-color 0.2s;
+  }
+
+  .product-name:hover {
+    background-color: #F4EFF4;
+  }
+
+  /* Add this new style for the table */
+  #productTable {
+    margin: 0 0; /* Negative margin to counteract the main padding */
+    width: calc(100%); /* Increase width to account for the negative margin */
+  }
 </style>
 
 <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
 
 <script>
-  const searchInput = document.getElementById('searchInput');
-  const productTable = document.getElementById('productTable');
-  const rows = productTable.getElementsByTagName('tr');
+  document.addEventListener('DOMContentLoaded', async () => {
+    const productTableBody = document.getElementById('productTableBody');
+    const searchInput = document.getElementById('searchInput');
 
-  searchInput.addEventListener('input', function() {
-    const searchTerm = this.value.toLowerCase();
+    let db;
 
-    for (let i = 1; i < rows.length; i++) {
-      const row = rows[i];
-      const rowData = row.textContent.toLowerCase();
-      
-      if (rowData.includes(searchTerm)) {
-        row.style.display = '';
-      } else {
-        row.style.display = 'none';
-      }
+    const openDB = () => {
+      return new Promise((resolve, reject) => {
+        const request = indexedDB.open('ProductDatabase', 1);
+        request.onerror = (event) => reject('IndexedDB error: ' + event.target.error);
+        request.onsuccess = (event) => resolve(event.target.result);
+        request.onupgradeneeded = (event) => {
+          const db = event.target.result;
+          db.createObjectStore('products', { keyPath: 'id' });
+        };
+      });
+    };
+
+    const getAllProducts = () => {
+      return new Promise((resolve, reject) => {
+        const transaction = db.transaction(['products'], 'readonly');
+        const objectStore = transaction.objectStore('products');
+        const request = objectStore.getAll();
+        request.onerror = (event) => reject('Error fetching products: ' + event.target.error);
+        request.onsuccess = (event) => resolve(event.target.result);
+      });
+    };
+
+    try {
+      db = await openDB();
+      const products = await getAllProducts();
+      renderProducts(products);
+    } catch (error) {
+      console.error('Error:', error);
     }
+
+    function renderProducts(products) {
+      productTableBody.innerHTML = '';
+      products.forEach(product => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td style="padding: 0.75rem 1rem; border-bottom: 1px solid #e5e7eb;">${product.SKU || ''}</td>
+          <td class="product-name" style="padding: 0.75rem 1rem; font-weight: 500; border-bottom: 1px solid #e5e7eb; border-left: 1px solid #e5e7eb;" data-id="${product.id}">${product.Name || ''}</td>
+          <td style="padding: 0.75rem 1rem; border-bottom: 1px solid #e5e7eb; border-left: 1px solid #e5e7eb;">${product.Qty || ''}</td>
+        `;
+        productTableBody.appendChild(row);
+      });
+    }
+
+    productTableBody.addEventListener('click', (e) => {
+      const nameCell = e.target.closest('.product-name');
+      if (nameCell) {
+        const productId = nameCell.dataset.id;
+        window.location.href = `/prod?id=${productId}`;
+      }
+    });
+
+    searchInput.addEventListener('input', async function() {
+      const searchTerm = this.value.toLowerCase();
+      try {
+        const allProducts = await getAllProducts();
+        const filteredProducts = allProducts.filter(product => 
+          product.Name.toLowerCase().includes(searchTerm) ||
+          product.SKU.toLowerCase().includes(searchTerm)
+        );
+        renderProducts(filteredProducts);
+      } catch (error) {
+        console.error('Error searching products:', error);
+      }
+    });
   });
 </script>

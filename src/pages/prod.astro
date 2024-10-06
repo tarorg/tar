@@ -2,8 +2,13 @@
 import Layout from '../layouts/Layout.astro';
 import Menu from '../components/Menu.astro';
 
+const productId = Astro.url.searchParams.get('id');
+let existingProduct = null;
+
 const productCore = {
   "Name": "",
+  "SKU": "",
+  "Qty": "",
   "Image": "",
   "Type": "Variant Item",
   "Category": "",
@@ -37,8 +42,8 @@ const productInstances = [
   <Menu />
   <main style="max-width: 1200px; margin: 0 auto; padding: 1rem;">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-      <h1 style="font-size: 20px; font-weight: bold;">core</h1>
-      <button class="button-tonal">Submit</button>
+      <h1 style="font-size: 20px; font-weight: bold;">{productId ? 'Edit Product' : 'Add New Product'}</h1>
+      <button id="submitButton" class="button-tonal">Submit</button>
     </div>
     <div style="background-color: white; border-radius: 0.5rem; box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1); margin-bottom: 2rem; overflow: hidden;">
       <table id="coreTable" style="width: 100%; border-collapse: collapse;">
@@ -52,7 +57,7 @@ const productInstances = [
           {Object.entries(productCore).map(([key, value], index) => (
             <tr style={index !== Object.entries(productCore).length - 1 ? "border-bottom: 1px solid #e5e7eb;" : ""}>
               <td style="padding: 0.75rem 1rem; font-weight: 500;">{key}</td>
-              <td style="padding: 0.75rem 1rem; border-left: 1px solid #e5e7eb;" data-key={key}>{value}</td>
+              <td style="padding: 0.75rem 1rem; border-left: 1px solid #e5e7eb; cursor: pointer;" data-key={key}>{value}</td>
             </tr>
           ))}
         </tbody>
@@ -111,7 +116,12 @@ const productInstances = [
       </div>
       <div class="bottom-sheet-content">
         <h2 id="bottomSheetTitle" class="bottom-sheet-title"></h2>
-        <div class="text-field-container">
+        <div id="typeChips" class="choice-chip-group" style="display: none;">
+          <button class="choice-chip" data-value="item">Item</button>
+          <button class="choice-chip" data-value="variants">Variants</button>
+          <button class="choice-chip" data-value="service">Service</button>
+        </div>
+        <div id="textFieldContainer" class="text-field-container">
           <input type="text" id="bottomSheetInput" class="text-field-input" placeholder=" " />
           <label for="bottomSheetInput" class="text-field-label">Enter value</label>
         </div>
@@ -265,41 +275,175 @@ const productInstances = [
   .button-tonal:active {
     background-color: #E8DEF8;
   }
+
+  .choice-chip-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+
+  .choice-chip {
+    background-color: #E8DEF8;
+    color: #1D192B;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.2s, color 0.2s;
+  }
+
+  .choice-chip:hover {
+    background-color: #D0BCFF;
+  }
+
+  .choice-chip.selected {
+    background-color: #6750A4;
+    color: #FFFFFF;
+  }
 </style>
 
 <script>
-  const coreTable = document.getElementById('coreTable');
-  const bottomSheet = document.getElementById('bottomSheet');
-  const bottomSheetTitle = document.getElementById('bottomSheetTitle');
-  const bottomSheetInput = document.getElementById('bottomSheetInput');
-  const bottomSheetSubmit = document.getElementById('bottomSheetSubmit');
+  document.addEventListener('DOMContentLoaded', async () => {
+    const productId = new URLSearchParams(window.location.search).get('id');
+    let db;
 
-  let currentCell = null;
+    const openDB = () => {
+      return new Promise((resolve, reject) => {
+        const request = indexedDB.open('ProductDatabase', 1);
+        request.onerror = (event) => reject('IndexedDB error: ' + event.target.error);
+        request.onsuccess = (event) => resolve(event.target.result);
+        request.onupgradeneeded = (event) => {
+          const db = event.target.result;
+          db.createObjectStore('products', { keyPath: 'id' });
+        };
+      });
+    };
 
-  coreTable.addEventListener('click', (e) => {
-    const cell = e.target.closest('td[data-key]');
-    if (cell) {
+    try {
+      db = await openDB();
+      if (productId) {
+        const transaction = db.transaction(['products'], 'readonly');
+        const objectStore = transaction.objectStore('products');
+        const request = objectStore.get(productId);
+        request.onsuccess = (event) => {
+          const existingProduct = event.target.result;
+          if (existingProduct) {
+            Object.keys(existingProduct).forEach(key => {
+              const cell = document.querySelector(`td[data-key="${key}"]`);
+              if (cell) cell.textContent = existingProduct[key];
+            });
+          }
+        };
+      }
+    } catch (error) {
+      console.error('Error opening IndexedDB:', error);
+    }
+
+    const coreTable = document.getElementById('coreTable');
+    const bottomSheet = document.getElementById('bottomSheet');
+    const bottomSheetTitle = document.getElementById('bottomSheetTitle');
+    const bottomSheetInput = document.getElementById('bottomSheetInput');
+    const bottomSheetSubmit = document.getElementById('bottomSheetSubmit');
+    const submitButton = document.getElementById('submitButton');
+
+    let currentCell = null;
+
+    const typeChips = document.getElementById('typeChips');
+    const textFieldContainer = document.getElementById('textFieldContainer');
+
+    function openBottomSheet(cell) {
       currentCell = cell;
       const key = cell.dataset.key;
       bottomSheetTitle.textContent = `Enter value for ${key}`;
-      bottomSheetInput.value = cell.textContent;
+      
+      if (key === 'Type') {
+        typeChips.style.display = 'flex';
+        textFieldContainer.style.display = 'none';
+        const currentValue = cell.textContent.trim().toLowerCase();
+        typeChips.querySelectorAll('.choice-chip').forEach(chip => {
+          chip.classList.toggle('selected', chip.dataset.value === currentValue);
+        });
+      } else {
+        typeChips.style.display = 'none';
+        textFieldContainer.style.display = 'block';
+        bottomSheetInput.value = cell.textContent.trim();
+      }
+
       bottomSheet.classList.add('active');
+      if (key !== 'Type') {
+        bottomSheetInput.focus();
+      }
     }
-  });
 
-  bottomSheetSubmit.addEventListener('click', () => {
-    if (currentCell) {
-      currentCell.textContent = bottomSheetInput.value;
+    function closeBottomSheet() {
       bottomSheet.classList.remove('active');
       currentCell = null;
     }
-  });
 
-  // Close bottom sheet when clicking on scrim
-  bottomSheet.addEventListener('click', (e) => {
-    if (e.target === bottomSheet || e.target.classList.contains('scrim')) {
-      bottomSheet.classList.remove('active');
-      currentCell = null;
-    }
+    // Add this event listener for the core table
+    coreTable.addEventListener('click', (e) => {
+      const cell = e.target.closest('td[data-key]');
+      if (cell) {
+        openBottomSheet(cell);
+      }
+    });
+
+    typeChips.addEventListener('click', (e) => {
+      const chip = e.target.closest('.choice-chip');
+      if (chip) {
+        typeChips.querySelectorAll('.choice-chip').forEach(c => c.classList.remove('selected'));
+        chip.classList.add('selected');
+      }
+    });
+
+    bottomSheetSubmit.addEventListener('click', () => {
+      if (currentCell) {
+        if (currentCell.dataset.key === 'Type') {
+          const selectedChip = typeChips.querySelector('.choice-chip.selected');
+          if (selectedChip) {
+            currentCell.textContent = selectedChip.textContent;
+          }
+        } else {
+          currentCell.textContent = bottomSheetInput.value;
+        }
+        closeBottomSheet();
+      }
+    });
+
+    bottomSheet.addEventListener('click', (e) => {
+      if (e.target === bottomSheet || e.target.classList.contains('scrim')) {
+        closeBottomSheet();
+      }
+    });
+
+    submitButton.addEventListener('click', async () => {
+      const productData = {};
+      const rows = coreTable.querySelectorAll('tbody tr');
+      rows.forEach(row => {
+        const key = row.querySelector('td:first-child').textContent.trim();
+        const value = row.querySelector('td:last-child').textContent.trim();
+        productData[key] = value;
+      });
+
+      productData.id = productId || Date.now().toString();
+
+      try {
+        const transaction = db.transaction(['products'], 'readwrite');
+        const objectStore = transaction.objectStore('products');
+        const request = objectStore.put(productData);
+        request.onsuccess = () => {
+          window.location.href = '/products';
+        };
+        request.onerror = () => {
+          alert('Error saving product data');
+        };
+      } catch (error) {
+        console.error('Error saving to IndexedDB:', error);
+        alert('Error saving product data');
+      }
+    });
   });
 </script>
