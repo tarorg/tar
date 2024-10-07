@@ -22,6 +22,7 @@ const productCore = {
   "Logistics": "Shipping carrier, shipping weight"
 };
 
+
 const variantAttributes = {
   color: "Red, Yellow, Green, Black",
   size: "Small, Medium, Large",
@@ -124,6 +125,23 @@ const productInstances = [
           <input type="text" id="bottomSheetInput" class="text-field-input" placeholder=" " />
         </div>
         <button id="bottomSheetSubmit" class="button-primary">Submit</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add this HTML for the Type bottom sheet -->
+  <div id="typeBottomSheet" class="bottom-sheet">
+    <div class="scrim"></div>
+    <div class="bottom-sheet-container">
+      <div class="bottom-sheet-header">
+        <div class="bottom-sheet-drag-handle"></div>
+      </div>
+      <div class="bottom-sheet-content">
+        <div id="typeChips" class="choice-chip-group">
+          <button class="choice-chip" data-value="Item">Item</button>
+          <button class="choice-chip" data-value="Variants">Variants</button>
+          <button class="choice-chip" data-value="Service">Service</button>
+        </div>
       </div>
     </div>
   </div>
@@ -326,80 +344,21 @@ const productInstances = [
       });
     };
 
-    try {
-      db = await openDB();
-      if (productId) {
-        const transaction = db.transaction(['products'], 'readonly');
-        const objectStore = transaction.objectStore('products');
-        const request = objectStore.get(productId);
-        request.onsuccess = (event) => {
-          const existingProduct = event.target.result;
-          if (existingProduct) {
-            Object.keys(existingProduct).forEach(key => {
-              const cell = document.querySelector(`td[data-key="${key}"]`);
-              if (cell) cell.textContent = existingProduct[key];
-            });
-          }
-        };
-      }
-
-      // Move the submit button event listener here
-      const submitButton = document.getElementById('submitButton');
-      if (submitButton) {
-        submitButton.addEventListener('click', async () => {
-          const productData = {};
-          const rows = coreTable.querySelectorAll('tbody tr');
-          rows.forEach(row => {
-            const key = row.querySelector('td:first-child').textContent.trim();
-            const value = row.querySelector('td:last-child').textContent.trim();
-            productData[key] = value;
-          });
-
-          productData.id = productId || Date.now().toString();
-
-          try {
-            const transaction = db.transaction(['products'], 'readwrite');
-            const objectStore = transaction.objectStore('products');
-            const request = objectStore.put(productData);
-            request.onsuccess = () => {
-              console.log('Product data saved successfully');
-              // Navigate to the products page on success
-              window.location.href = '/products';
-            };
-            request.onerror = (event) => {
-              console.error('Error saving product data:', event.target.error);
-              alert('Error saving product data');
-            };
-          } catch (error) {
-            console.error('Error saving to IndexedDB:', error);
-            alert('Error saving product data');
-          }
-        });
-      } else {
-        console.error('Submit button not found');
-      }
-    } catch (error) {
-      console.error('Error opening IndexedDB:', error);
-    }
-
+    // DOM element selections
     const coreTable = document.getElementById('coreTable');
     const bottomSheet = document.getElementById('bottomSheet');
-    const bottomSheetTitle = document.getElementById('bottomSheetTitle');
     const bottomSheetInput = document.getElementById('bottomSheetInput');
     const bottomSheetSubmit = document.getElementById('bottomSheetSubmit');
     const submitButton = document.getElementById('submitButton');
-
-    let currentCell = null;
-
-    const typeChips = document.getElementById('typeChips');
+    const typeBottomSheet = document.getElementById('typeBottomSheet');
     const textFieldContainer = document.getElementById('textFieldContainer');
-
     const variantSection = document.getElementById('variantSection');
     const instancesSection = document.getElementById('instancesSection');
     const instancesTitle = document.getElementById('instancesTitle');
     const instancesTableBody = document.getElementById('instancesTableBody');
 
-    // Add this near the top of your script
+    let currentCell = null;
+
     let pageState = {
       type: localStorage.getItem('productType') || 'Variant Item'
     };
@@ -411,30 +370,34 @@ const productInstances = [
     }
 
     function updateSections(type) {
-      if (type === 'Item') {
-        variantSection.style.display = 'none';
-        instancesSection.style.display = 'block';
-        instancesTitle.textContent = 'Instance';
-        renderSingleInstance();
-      } else if (type === 'Variants' || type === 'Service') {
-        variantSection.style.display = 'block';
-        instancesSection.style.display = 'block';
-        instancesTitle.textContent = 'Instances';
-        renderInstances(productInstances);
-      } else {
-        variantSection.style.display = 'none';
-        instancesSection.style.display = 'none';
+      if (variantSection && instancesSection && instancesTitle) {
+        if (type === 'Item') {
+          variantSection.style.display = 'none';
+          instancesSection.style.display = 'block';
+          instancesTitle.textContent = 'Instance';
+          renderSingleInstance();
+        } else if (type === 'Variants' || type === 'Service') {
+          variantSection.style.display = 'block';
+          instancesSection.style.display = 'block';
+          instancesTitle.textContent = 'Instances';
+          renderInstances(productInstances);
+        } else {
+          variantSection.style.display = 'none';
+          instancesSection.style.display = 'none';
+        }
       }
     }
 
     function renderInstances(instances) {
-      instancesTableBody.innerHTML = instances.map((instance, index) => `
-        <tr style="${index !== instances.length - 1 ? "border-bottom: 1px solid #e5e7eb;" : ""}">
-          <td style="padding: 0.75rem 1rem; font-weight: 500;">${instance.sku}</td>
-          <td style="padding: 0.75rem 1rem; border-left: 1px solid #e5e7eb;">${instance.name}</td>
-          <td style="padding: 0.75rem 1rem; border-left: 1px solid #e5e7eb;">${instance.qty}</td>
-        </tr>
-      `).join('');
+      if (instancesTableBody) {
+        instancesTableBody.innerHTML = instances.map((instance, index) => `
+          <tr style="${index !== instances.length - 1 ? "border-bottom: 1px solid #e5e7eb;" : ""}">
+            <td style="padding: 0.75rem 1rem; font-weight: 500;">${instance.sku}</td>
+            <td style="padding: 0.75rem 1rem; border-left: 1px solid #e5e7eb;">${instance.name}</td>
+            <td style="padding: 0.75rem 1rem; border-left: 1px solid #e5e7eb;">${instance.qty}</td>
+          </tr>
+        `).join('');
+      }
     }
 
     function renderSingleInstance() {
@@ -442,50 +405,78 @@ const productInstances = [
       const nameCell = document.querySelector('td[data-key="Name"]');
       const qtyCell = document.querySelector('td[data-key="Qty"]');
 
-      instancesTableBody.innerHTML = `
-        <tr>
-          <td style="padding: 0.75rem 1rem; font-weight: 500;">${skuCell ? skuCell.textContent : ''}</td>
-          <td style="padding: 0.75rem 1rem; border-left: 1px solid #e5e7eb;">${nameCell ? nameCell.textContent : ''}</td>
-          <td style="padding: 0.75rem 1rem; border-left: 1px solid #e5e7eb;">${qtyCell ? qtyCell.textContent : ''}</td>
-        </tr>
-      `;
+      if (instancesTableBody) {
+        instancesTableBody.innerHTML = `
+          <tr>
+            <td style="padding: 0.75rem 1rem; font-weight: 500;">${skuCell ? skuCell.textContent : ''}</td>
+            <td style="padding: 0.75rem 1rem; border-left: 1px solid #e5e7eb;">${nameCell ? nameCell.textContent : ''}</td>
+            <td style="padding: 0.75rem 1rem; border-left: 1px solid #e5e7eb;">${qtyCell ? qtyCell.textContent : ''}</td>
+          </tr>
+        `;
+      }
+    }
+
+    function loadProductData(product) {
+      Object.entries(product).forEach(([key, value]) => {
+        const cell = document.querySelector(`td[data-key="${key}"]`);
+        if (cell) {
+          cell.textContent = value;
+        }
+      });
+      updatePageState({ type: product.Type });
+    }
+
+    async function saveProductData() {
+      const productData = {};
+      const cells = coreTable.querySelectorAll('td[data-key]');
+      cells.forEach(cell => {
+        productData[cell.dataset.key] = cell.textContent.trim();
+      });
+
+      productData.id = productId || Date.now().toString();
+
+      try {
+        const transaction = db.transaction(['products'], 'readwrite');
+        const objectStore = transaction.objectStore('products');
+        await objectStore.put(productData);
+        console.log('Product data saved successfully');
+        window.location.href = '/products';
+      } catch (error) {
+        console.error('Error saving product data:', error);
+        alert('Error saving product data');
+      }
     }
 
     function openBottomSheet(cell) {
       currentCell = cell;
       const key = cell.dataset.key;
       
-      typeChips.style.display = 'none';
-      textFieldContainer.style.display = 'block';
-      bottomSheetSubmit.style.display = 'block';
-      bottomSheetInput.value = cell.textContent.trim();
-      bottomSheetInput.placeholder = key;
-      
-      // Remove the label-related classes and logic
-      bottomSheetInput.classList.remove('has-value');
+      if (typeBottomSheet) {
+        const typeChips = typeBottomSheet.querySelector('#typeChips');
+        if (typeChips) typeChips.style.display = 'none';
+      }
+      if (textFieldContainer) textFieldContainer.style.display = 'block';
+      if (bottomSheetSubmit) bottomSheetSubmit.style.display = 'block';
+      if (bottomSheetInput) {
+        bottomSheetInput.value = cell.textContent.trim();
+        bottomSheetInput.placeholder = key;
+        bottomSheetInput.classList.remove('has-value');
+      }
 
-      bottomSheet.classList.add('active');
-      bottomSheetInput.focus();
+      if (bottomSheet) {
+        bottomSheet.classList.add('active');
+        if (bottomSheetInput) bottomSheetInput.focus();
+      }
     }
 
     function closeBottomSheet() {
-      bottomSheet.classList.remove('active');
+      if (bottomSheet) bottomSheet.classList.remove('active');
       currentCell = null;
-    }
-
-    // Remove the existing click event listener
-    coreTable.removeEventListener('click', handleCellClick);
-
-    // Add new event listeners for editing
-    if (coreTable) {
-      coreTable.addEventListener('focus', handleCellFocus, true);
-      coreTable.addEventListener('blur', handleCellBlur, true);
-      coreTable.addEventListener('keydown', handleCellKeydown, true);
     }
 
     function handleCellFocus(e) {
       const cell = e.target.closest('td[contenteditable]');
-      if (cell) {
+      if (cell && cell.dataset.key !== 'Type') {
         cell.dataset.before = cell.textContent;
         cell.classList.add('cell-highlight');
       }
@@ -521,8 +512,71 @@ const productInstances = [
       // Add any other specific handling for different keys if needed
     }
 
-    // Update the initial setup
+    function openTypeBottomSheet() {
+      if (typeBottomSheet) typeBottomSheet.classList.add('active');
+    }
+
+    function closeTypeBottomSheet() {
+      if (typeBottomSheet) typeBottomSheet.classList.remove('active');
+    }
+
+    // Event Listeners
+    if (coreTable) {
+      coreTable.addEventListener('focus', handleCellFocus, true);
+      coreTable.addEventListener('blur', handleCellBlur, true);
+      coreTable.addEventListener('keydown', handleCellKeydown, true);
+    }
+
     const typeCell = document.querySelector('td[data-key="Type"]');
+    if (typeCell) {
+      typeCell.addEventListener('click', openTypeBottomSheet);
+      typeCell.removeAttribute('contenteditable');
+    }
+
+    if (typeBottomSheet) {
+      const typeChips = typeBottomSheet.querySelector('#typeChips');
+      if (typeChips) {
+        typeChips.addEventListener('click', (e) => {
+          const chip = e.target.closest('.choice-chip');
+          if (chip && typeCell) {
+            const newValue = chip.dataset.value;
+            typeCell.textContent = newValue;
+            updatePageState({ type: newValue });
+            closeTypeBottomSheet();
+          }
+        });
+      }
+
+      typeBottomSheet.addEventListener('click', (e) => {
+        if (e.target === typeBottomSheet || e.target.classList.contains('scrim')) {
+          closeTypeBottomSheet();
+        }
+      });
+    }
+
+    try {
+      db = await openDB();
+      
+      if (productId) {
+        const transaction = db.transaction(['products'], 'readonly');
+        const objectStore = transaction.objectStore('products');
+        const request = objectStore.get(productId);
+        request.onsuccess = (event) => {
+          const product = event.target.result;
+          if (product) {
+            loadProductData(product);
+          }
+        };
+      }
+
+      if (submitButton) {
+        submitButton.addEventListener('click', saveProductData);
+      }
+    } catch (error) {
+      console.error('Error opening IndexedDB:', error);
+    }
+
+    // Initial setup
     if (typeCell) {
       typeCell.textContent = pageState.type;
       updateSections(pageState.type);
