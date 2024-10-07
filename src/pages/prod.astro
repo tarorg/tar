@@ -40,9 +40,9 @@ const productInstances = [
 
 <Layout title="Product">
   <Menu />
-  <main style="max-width: 1200px; margin: 0 auto; padding: 1rem;">
+  <main style="max-width: 1200px; margin: 0 auto; padding: 1rem 20px;"> <!-- Changed padding -->
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-      <h1 style="font-size: 20px; font-weight: bold;">{productId ? 'Edit Product' : 'Add New Product'}</h1>
+      <h1 style="font-size: 20px; font-weight: bold;">{productId ? 'Edit Product' : 'Product'}</h1>
       <button id="submitButton" class="button-tonal">Submit</button>
     </div>
     <div style="background-color: white; border-radius: 0.5rem; box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1); margin-bottom: 2rem; overflow: hidden;">
@@ -57,53 +57,53 @@ const productInstances = [
           {Object.entries(productCore).map(([key, value], index) => (
             <tr style={index !== Object.entries(productCore).length - 1 ? "border-bottom: 1px solid #e5e7eb;" : ""}>
               <td style="padding: 0.75rem 1rem; font-weight: 500;">{key}</td>
-              <td style="padding: 0.75rem 1rem; border-left: 1px solid #e5e7eb; cursor: pointer;" data-key={key}>{value}</td>
+              <td style="padding: 0.75rem 1rem; border-left: 1px solid #e5e7eb;" 
+                  contenteditable="true" 
+                  data-key={key}>{value}</td>
             </tr>
           ))}
         </tbody>
       </table>
     </div>
 
-    <h2 style="font-size: 20px; font-weight: bold; margin-bottom: 1rem;">variant</h2>
-    <div style="background-color: white; border-radius: 0.5rem; box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1); margin-bottom: 2rem; overflow: hidden;">
-      <table style="width: 100%; border-collapse: collapse;">
-        <thead>
-          <tr style="border-bottom: 1px solid #e5e7eb;">
-            <th style="padding: 0.75rem 1rem; text-align: left; font-weight: 600;">Attribute</th>
-            <th style="padding: 0.75rem 1rem; text-align: left; font-weight: 600; border-left: 1px solid #e5e7eb;">Value</th>
-          </tr>
-        </thead>
-        <tbody>
-          {Object.entries(variantAttributes).map(([key, value], index) => (
-            <tr style={index !== Object.entries(variantAttributes).length - 1 ? "border-bottom: 1px solid #e5e7eb;" : ""}>
-              <td style="padding: 0.75rem 1rem; font-weight: 500;">{key.charAt(0).toUpperCase() + key.slice(1)}</td>
-              <td style="padding: 0.75rem 1rem; border-left: 1px solid #e5e7eb;">{value}</td>
+    <div id="variantSection" style="display: none;">
+      <h2 style="font-size: 20px; font-weight: bold; margin-bottom: 1rem;">variant</h2>
+      <div style="background-color: white; border-radius: 0.5rem; box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1); margin-bottom: 2rem; overflow: hidden;">
+        <table style="width: 100%; border-collapse: collapse;">
+          <thead>
+            <tr style="border-bottom: 1px solid #e5e7eb;">
+              <th style="padding: 0.75rem 1rem; text-align: left; font-weight: 600;">Attribute</th>
+              <th style="padding: 0.75rem 1rem; text-align: left; font-weight: 600; border-left: 1px solid #e5e7eb;">Value</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {Object.entries(variantAttributes).map(([key, value], index) => (
+              <tr style={index !== Object.entries(variantAttributes).length - 1 ? "border-bottom: 1px solid #e5e7eb;" : ""}>
+                <td style="padding: 0.75rem 1rem; font-weight: 500;">{key.charAt(0).toUpperCase() + key.slice(1)}</td>
+                <td style="padding: 0.75rem 1rem; border-left: 1px solid #e5e7eb;">{value}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
 
-    <h2 style="font-size: 20px; font-weight: bold; margin-bottom: 1rem;">instances</h2>
-    <div style="background-color: white; border-radius: 0.5rem; box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1); overflow: hidden;">
-      <table style="width: 100%; border-collapse: collapse;">
-        <thead>
-          <tr style="border-bottom: 1px solid #e5e7eb;">
-            <th style="padding: 0.75rem 1rem; text-align: left; font-weight: 600;">SKU</th>
-            <th style="padding: 0.75rem 1rem; text-align: left; font-weight: 600; border-left: 1px solid #e5e7eb;">Item Name</th>
-            <th style="padding: 0.75rem 1rem; text-align: left; font-weight: 600; border-left: 1px solid #e5e7eb;">Qty</th>
-          </tr>
-        </thead>
-        <tbody>
-          {productInstances.map((product, index) => (
-            <tr style={index !== productInstances.length - 1 ? "border-bottom: 1px solid #e5e7eb;" : ""}>
-              <td style="padding: 0.75rem 1rem; font-weight: 500;">{product.sku}</td>
-              <td style="padding: 0.75rem 1rem; border-left: 1px solid #e5e7eb;">{product.name}</td>
-              <td style="padding: 0.75rem 1rem; border-left: 1px solid #e5e7eb;">{product.qty}</td>
+    <div id="instancesSection" style="display: none;">
+      <h2 id="instancesTitle" style="font-size: 20px; font-weight: bold; margin-bottom: 1rem;">Instances</h2>
+      <div style="background-color: white; border-radius: 0.5rem; box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1); overflow: hidden;">
+        <table style="width: 100%; border-collapse: collapse;">
+          <thead>
+            <tr style="border-bottom: 1px solid #e5e7eb;">
+              <th style="padding: 0.75rem 1rem; text-align: left; font-weight: 600;">SKU</th>
+              <th style="padding: 0.75rem 1rem; text-align: left; font-weight: 600; border-left: 1px solid #e5e7eb;">Item Name</th>
+              <th style="padding: 0.75rem 1rem; text-align: left; font-weight: 600; border-left: 1px solid #e5e7eb;">Qty</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody id="instancesTableBody">
+            <!-- Instance rows will be inserted here by JavaScript -->
+          </tbody>
+        </table>
+      </div>
     </div>
   </main>
 
@@ -115,7 +115,6 @@ const productInstances = [
         <div class="bottom-sheet-drag-handle"></div>
       </div>
       <div class="bottom-sheet-content">
-        <h2 id="bottomSheetTitle" class="bottom-sheet-title"></h2>
         <div id="typeChips" class="choice-chip-group" style="display: none;">
           <button class="choice-chip" data-value="item">Item</button>
           <button class="choice-chip" data-value="variants">Variants</button>
@@ -123,7 +122,6 @@ const productInstances = [
         </div>
         <div id="textFieldContainer" class="text-field-container">
           <input type="text" id="bottomSheetInput" class="text-field-input" placeholder=" " />
-          <label for="bottomSheetInput" class="text-field-label">Enter value</label>
         </div>
         <button id="bottomSheetSubmit" class="button-primary">Submit</button>
       </div>
@@ -159,89 +157,78 @@ const productInstances = [
   .bottom-sheet-container {
     background-color: #fff;
     border-radius: 28px 28px 0 0;
-    padding: 0 24px 24px;
+    padding: 24px;
     transform: translateY(100%);
     transition: transform 0.25s ease;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
   }
 
   .bottom-sheet-header {
-    padding: 12px 0;
     display: flex;
     justify-content: center;
+    margin-bottom: 16px;
   }
 
   .bottom-sheet-drag-handle {
     width: 32px;
     height: 4px;
-    background-color: #C4C7C5;
+    background-color: #E0E0E0;
     border-radius: 2px;
   }
 
   .bottom-sheet-content {
-    padding-top: 16px;
-  }
-
-  .bottom-sheet-title {
-    font-size: 24px;
-    font-weight: 400;
-    margin-bottom: 16px;
-    color: #1D1B20;
+    padding: 0;
+    width: 100%; /* Changed from 90% to 100% */
+    max-width: 600px;
+    margin: 0 auto;
   }
 
   .text-field-container {
-    position: relative;
-    margin-bottom: 24px;
+    margin-bottom: 16px;
+    width: 100%;
   }
 
   .text-field-input {
     width: 100%;
-    padding: 12px 16px;
-    font-size: 16px;
+    padding: 10px 14px;
     border: 1px solid #79747E;
     border-radius: 4px;
-    background-color: #F4EFF4;
-    transition: border-color 0.2s, background-color 0.2s;
+    font-size: 16px;
+    background-color: transparent;
+    transition: border-color 0.2s;
+    box-sizing: border-box;
   }
 
   .text-field-input:focus {
-    outline: none;
     border-color: #6750A4;
-    background-color: #FFFFFF;
+    outline: none;
   }
 
-  .text-field-label {
-    position: absolute;
-    left: 16px;
-    top: 50%;
-    transform: translateY(-50%);
-    font-size: 16px;
-    color: #49454F;
-    transition: all 0.2s;
-    pointer-events: none;
-  }
-
-  .text-field-input:focus + .text-field-label,
-  .text-field-input:not(:placeholder-shown) + .text-field-label {
-    top: 0;
-    font-size: 12px;
-    background-color: #FFFFFF;
-    padding: 0 4px;
+  .text-field-input::placeholder {
+    color: #79747E;
   }
 
   .button-primary {
     background-color: #6750A4;
     color: #FFFFFF;
     border: none;
+    border-radius: 100px;
     padding: 10px 24px;
     font-size: 14px;
     font-weight: 500;
-    border-radius: 100px;
+    text-transform: uppercase;
     cursor: pointer;
     transition: background-color 0.2s;
+    display: block;
+    margin: 0 auto;
+    width: 100%;
+    max-width: 200px;
   }
 
   .button-primary:hover {
-    background-color: #7965AF;
+    background-color: #7C6EBF;
   }
 
   .bottom-sheet.active {
@@ -285,7 +272,7 @@ const productInstances = [
 
   .choice-chip {
     background-color: #E8DEF8;
-    color: #1D192B;
+    color: #000000; /* Changed to black */
     border: none;
     padding: 8px 16px;
     border-radius: 8px;
@@ -300,8 +287,25 @@ const productInstances = [
   }
 
   .choice-chip.selected {
-    background-color: #6750A4;
-    color: #FFFFFF;
+    background-color: #D0BCFF;
+    color: #000000; /* Changed to black */
+  }
+
+  .cell-highlight {
+    background-color: #f5f5f5; /* Very light grey background */
+    outline: none; /* Remove the outline */
+  }
+
+  /* Style for when the cell is being edited */
+  [contenteditable="true"]:focus {
+    background-color: #f5f5f5; /* Very light grey background */
+    outline: none; /* Remove the outline */
+    box-shadow: none; /* Remove any box shadow if present */
+  }
+
+  main {
+    box-sizing: border-box;
+    width: 100%;
   }
 </style>
 
@@ -338,6 +342,42 @@ const productInstances = [
           }
         };
       }
+
+      // Move the submit button event listener here
+      const submitButton = document.getElementById('submitButton');
+      if (submitButton) {
+        submitButton.addEventListener('click', async () => {
+          const productData = {};
+          const rows = coreTable.querySelectorAll('tbody tr');
+          rows.forEach(row => {
+            const key = row.querySelector('td:first-child').textContent.trim();
+            const value = row.querySelector('td:last-child').textContent.trim();
+            productData[key] = value;
+          });
+
+          productData.id = productId || Date.now().toString();
+
+          try {
+            const transaction = db.transaction(['products'], 'readwrite');
+            const objectStore = transaction.objectStore('products');
+            const request = objectStore.put(productData);
+            request.onsuccess = () => {
+              console.log('Product data saved successfully');
+              // Navigate to the products page on success
+              window.location.href = '/products';
+            };
+            request.onerror = (event) => {
+              console.error('Error saving product data:', event.target.error);
+              alert('Error saving product data');
+            };
+          } catch (error) {
+            console.error('Error saving to IndexedDB:', error);
+            alert('Error saving product data');
+          }
+        });
+      } else {
+        console.error('Submit button not found');
+      }
     } catch (error) {
       console.error('Error opening IndexedDB:', error);
     }
@@ -354,28 +394,78 @@ const productInstances = [
     const typeChips = document.getElementById('typeChips');
     const textFieldContainer = document.getElementById('textFieldContainer');
 
+    const variantSection = document.getElementById('variantSection');
+    const instancesSection = document.getElementById('instancesSection');
+    const instancesTitle = document.getElementById('instancesTitle');
+    const instancesTableBody = document.getElementById('instancesTableBody');
+
+    // Add this near the top of your script
+    let pageState = {
+      type: localStorage.getItem('productType') || 'Variant Item'
+    };
+
+    function updatePageState(newState) {
+      pageState = { ...pageState, ...newState };
+      localStorage.setItem('productType', pageState.type);
+      updateSections(pageState.type);
+    }
+
+    function updateSections(type) {
+      if (type === 'Item') {
+        variantSection.style.display = 'none';
+        instancesSection.style.display = 'block';
+        instancesTitle.textContent = 'Instance';
+        renderSingleInstance();
+      } else if (type === 'Variants' || type === 'Service') {
+        variantSection.style.display = 'block';
+        instancesSection.style.display = 'block';
+        instancesTitle.textContent = 'Instances';
+        renderInstances(productInstances);
+      } else {
+        variantSection.style.display = 'none';
+        instancesSection.style.display = 'none';
+      }
+    }
+
+    function renderInstances(instances) {
+      instancesTableBody.innerHTML = instances.map((instance, index) => `
+        <tr style="${index !== instances.length - 1 ? "border-bottom: 1px solid #e5e7eb;" : ""}">
+          <td style="padding: 0.75rem 1rem; font-weight: 500;">${instance.sku}</td>
+          <td style="padding: 0.75rem 1rem; border-left: 1px solid #e5e7eb;">${instance.name}</td>
+          <td style="padding: 0.75rem 1rem; border-left: 1px solid #e5e7eb;">${instance.qty}</td>
+        </tr>
+      `).join('');
+    }
+
+    function renderSingleInstance() {
+      const skuCell = document.querySelector('td[data-key="SKU"]');
+      const nameCell = document.querySelector('td[data-key="Name"]');
+      const qtyCell = document.querySelector('td[data-key="Qty"]');
+
+      instancesTableBody.innerHTML = `
+        <tr>
+          <td style="padding: 0.75rem 1rem; font-weight: 500;">${skuCell ? skuCell.textContent : ''}</td>
+          <td style="padding: 0.75rem 1rem; border-left: 1px solid #e5e7eb;">${nameCell ? nameCell.textContent : ''}</td>
+          <td style="padding: 0.75rem 1rem; border-left: 1px solid #e5e7eb;">${qtyCell ? qtyCell.textContent : ''}</td>
+        </tr>
+      `;
+    }
+
     function openBottomSheet(cell) {
       currentCell = cell;
       const key = cell.dataset.key;
-      bottomSheetTitle.textContent = `Enter value for ${key}`;
       
-      if (key === 'Type') {
-        typeChips.style.display = 'flex';
-        textFieldContainer.style.display = 'none';
-        const currentValue = cell.textContent.trim().toLowerCase();
-        typeChips.querySelectorAll('.choice-chip').forEach(chip => {
-          chip.classList.toggle('selected', chip.dataset.value === currentValue);
-        });
-      } else {
-        typeChips.style.display = 'none';
-        textFieldContainer.style.display = 'block';
-        bottomSheetInput.value = cell.textContent.trim();
-      }
+      typeChips.style.display = 'none';
+      textFieldContainer.style.display = 'block';
+      bottomSheetSubmit.style.display = 'block';
+      bottomSheetInput.value = cell.textContent.trim();
+      bottomSheetInput.placeholder = key;
+      
+      // Remove the label-related classes and logic
+      bottomSheetInput.classList.remove('has-value');
 
       bottomSheet.classList.add('active');
-      if (key !== 'Type') {
-        bottomSheetInput.focus();
-      }
+      bottomSheetInput.focus();
     }
 
     function closeBottomSheet() {
@@ -383,67 +473,59 @@ const productInstances = [
       currentCell = null;
     }
 
-    // Add this event listener for the core table
-    coreTable.addEventListener('click', (e) => {
-      const cell = e.target.closest('td[data-key]');
+    // Remove the existing click event listener
+    coreTable.removeEventListener('click', handleCellClick);
+
+    // Add new event listeners for editing
+    if (coreTable) {
+      coreTable.addEventListener('focus', handleCellFocus, true);
+      coreTable.addEventListener('blur', handleCellBlur, true);
+      coreTable.addEventListener('keydown', handleCellKeydown, true);
+    }
+
+    function handleCellFocus(e) {
+      const cell = e.target.closest('td[contenteditable]');
       if (cell) {
-        openBottomSheet(cell);
+        cell.dataset.before = cell.textContent;
+        cell.classList.add('cell-highlight');
       }
-    });
+    }
 
-    typeChips.addEventListener('click', (e) => {
-      const chip = e.target.closest('.choice-chip');
-      if (chip) {
-        typeChips.querySelectorAll('.choice-chip').forEach(c => c.classList.remove('selected'));
-        chip.classList.add('selected');
-      }
-    });
+    function handleCellBlur(e) {
+      const cell = e.target.closest('td[contenteditable]');
+      if (cell) {
+        const newValue = cell.textContent.trim();
+        const oldValue = cell.dataset.before;
+        delete cell.dataset.before;
+        cell.classList.remove('cell-highlight');
 
-    bottomSheetSubmit.addEventListener('click', () => {
-      if (currentCell) {
-        if (currentCell.dataset.key === 'Type') {
-          const selectedChip = typeChips.querySelector('.choice-chip.selected');
-          if (selectedChip) {
-            currentCell.textContent = selectedChip.textContent;
-          }
-        } else {
-          currentCell.textContent = bottomSheetInput.value;
+        if (newValue !== oldValue) {
+          handleValueChange(cell, newValue);
         }
-        closeBottomSheet();
       }
-    });
+    }
 
-    bottomSheet.addEventListener('click', (e) => {
-      if (e.target === bottomSheet || e.target.classList.contains('scrim')) {
-        closeBottomSheet();
+    function handleCellKeydown(e) {
+      const cell = e.target.closest('td[contenteditable]');
+      if (cell && e.key === 'Enter') {
+        e.preventDefault();
+        cell.blur();
       }
-    });
+    }
 
-    submitButton.addEventListener('click', async () => {
-      const productData = {};
-      const rows = coreTable.querySelectorAll('tbody tr');
-      rows.forEach(row => {
-        const key = row.querySelector('td:first-child').textContent.trim();
-        const value = row.querySelector('td:last-child').textContent.trim();
-        productData[key] = value;
-      });
-
-      productData.id = productId || Date.now().toString();
-
-      try {
-        const transaction = db.transaction(['products'], 'readwrite');
-        const objectStore = transaction.objectStore('products');
-        const request = objectStore.put(productData);
-        request.onsuccess = () => {
-          window.location.href = '/products';
-        };
-        request.onerror = () => {
-          alert('Error saving product data');
-        };
-      } catch (error) {
-        console.error('Error saving to IndexedDB:', error);
-        alert('Error saving product data');
+    function handleValueChange(cell, newValue) {
+      const key = cell.dataset.key;
+      if (key === 'Type') {
+        updatePageState({ type: newValue });
       }
-    });
+      // Add any other specific handling for different keys if needed
+    }
+
+    // Update the initial setup
+    const typeCell = document.querySelector('td[data-key="Type"]');
+    if (typeCell) {
+      typeCell.textContent = pageState.type;
+      updateSections(pageState.type);
+    }
   });
 </script>
