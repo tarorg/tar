@@ -25,4 +25,8 @@ export default defineNuxtConfig({
       },
     ],
   },
+
+  dir: {
+    pages: 'pages'
+  },
 });

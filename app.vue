@@ -74,7 +74,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { SquareIcon, TriangleIcon, CircleIcon, UserIcon, CreditCardIcon, SettingsIcon, KeyboardIcon, UsersIcon, UserPlusIcon, MailIcon, FacebookIcon, TwitterIcon, PlusCircleIcon, GithubIcon, LifeBuoyIcon, CloudIcon, LogOutIcon } from 'lucide-vue-next'
+import { SquareIcon, TriangleIcon, CircleIcon, UserIcon, CreditCardIcon, SettingsIcon, KeyboardIcon, UsersIcon, UserPlusIcon, MailIcon, FacebookIcon, TwitterIcon, PlusCircleIcon, GithubIcon, LifeBuoyIcon, CloudIcon, LogOutIcon, PackageIcon } from 'lucide-vue-next'
 import Navbar from '@/components/Ui/Navbar.vue'
 import UiDropdownMenu from '@/components/Ui/DropdownMenu/DropdownMenu.vue'
 import UiDropdownMenuTrigger from '@/components/Ui/DropdownMenu/Trigger.vue'
@@ -96,6 +96,7 @@ const menuitems = [
   { label: "My Account" },
   { divider: true },
   { title: "Pin", icon: SquareIcon, shortcut: "P", iconClass: "text-blue-500", route: "/pin" },
+  { title: "Products", icon: PackageIcon, shortcut: "⇧⌘R", route: "/products" },
   { title: "Profile", icon: UserIcon, shortcut: "⇧⌘P" },
   { title: "Billing", icon: CreditCardIcon, shortcut: "⌘B" },
   { title: "Settings", icon: SettingsIcon, shortcut: "⌘S" },
@@ -123,7 +124,7 @@ const menuitems = [
   { title: "Sign out", icon: LogOutIcon },
 ];
 
-const handleMenuItemSelect = (item) => {
+const handleMenuItemSelect = (item: { route?: string }) => {
   if (item.route) {
     router.push(item.route)
   }
