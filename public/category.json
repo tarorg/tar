@@ -1,0 +1,8 @@
+[
+  { "value": "electronics", "label": "Electronics" },
+  { "value": "clothing", "label": "Clothing" },
+  { "value": "books", "label": "Books" },
+  { "value": "home", "label": "Home & Kitchen" },
+  { "value": "beauty", "label": "Beauty & Personal Care" },
+  { "value": "sports", "label": "Sports & Outdoors" }
+]
