@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, watch, computed } from 'vue'
+import { ref, onMounted, watch, computed, onBeforeUnmount } from 'vue'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -16,6 +16,7 @@ import {
   Plus,
   Image as ImageIcon,
   ChevronDown,
+  ChevronRight,
 } from 'lucide-vue-next'
 import { initDB, getAttributes, getOptions, dbStatus } from '@/services/indexedDB'
 import {
@@ -25,6 +26,10 @@ import {
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet'
+import EditorJS from '@editorjs/editorjs'
+import Header from '@editorjs/header'
+import List from '@editorjs/list'
+import Paragraph from '@editorjs/paragraph'
 
 interface AttributeOption {
   value: string
@@ -375,10 +380,61 @@ const getAvailableAttributes = (currentRowNum: string) => {
     !selectedValues.includes(attr.value)
   )
 }
+
+// Add these refs
+const showDescriptionSheet = ref(false)
+const editor = ref<EditorJS | null>(null)
+const editorData = ref({})
+
+// Add this function to initialize Editor.js
+const initEditor = () => {
+  if (editor.value) return
+
+  editor.value = new EditorJS({
+    holder: 'editor',
+    tools: {
+      header: {
+        class: Header,
+        config: {
+          levels: [2, 3, 4],
+          defaultLevel: 3
+        }
+      },
+      list: {
+        class: List,
+        inlineToolbar: true
+      },
+      paragraph: {
+        class: Paragraph,
+        inlineToolbar: true
+      }
+    },
+    data: editorData.value,
+    onChange: async () => {
+      editorData.value = await editor.value?.save() || {}
+    }
+  })
+}
+
+// Add cleanup function
+onBeforeUnmount(() => {
+  editor.value?.destroy()
+  editor.value = null
+})
+
+// Add handler for opening description sheet
+const openDescriptionEditor = () => {
+  showDescriptionSheet.value = true
+  // Initialize editor after sheet is opened
+  nextTick(() => {
+    initEditor()
+  })
+}
 </script>
 
 <template>
-  <div class="flex flex-col min-h-screen w-full">
+  <div class="flex flex-col h-screen">
+    <!-- Fixed Header -->
     <header class="sticky top-0 flex h-16 items-center justify-between border-b bg-white px-2 md:px-6 z-10">
       <div class="flex items-center">
         <Button variant="ghost" size="icon" class="mr-2" @click="goBack">
@@ -399,340 +455,388 @@ const getAvailableAttributes = (currentRowNum: string) => {
       </div>
     </header>
 
-    <div v-if="isLoading" class="flex items-center justify-center p-4">
-      <div class="text-sm text-gray-500">Loading...</div>
-    </div>
+    <!-- Scrollable Content -->
+    <div class="flex-1 overflow-y-auto">
+      <div v-if="isLoading" class="flex items-center justify-center p-4">
+        <div class="text-sm text-gray-500">Loading...</div>
+      </div>
 
-    <div v-else-if="loadError" class="flex items-center justify-center p-4">
-      <div class="text-sm text-red-500">{{ loadError }}</div>
-    </div>
+      <div v-else-if="loadError" class="flex items-center justify-center p-4">
+        <div class="text-sm text-red-500">{{ loadError }}</div>
+      </div>
 
-    <div v-else class="flex-1 space-y-4 p-8">
-      <Sheet v-model:open="showConfirmationSheet">
-        <SheetContent 
-          side="bottom" 
-          class="h-[50vh] rounded-t-xl"
-        >
-          <SheetHeader>
-            <SheetTitle>Change Attribute?</SheetTitle>
-            <SheetDescription>
-              Changing the attribute will reset its selected values. Are you sure you want to continue?
-            </SheetDescription>
-          </SheetHeader>
-          <div class="mt-6 flex flex-col gap-4">
-            <div class="flex items-center gap-2">
-              <div class="text-sm font-medium">Current Attribute:</div>
-              <div class="text-sm text-gray-500">
-                {{ pendingAttributeChange?.rowNum && selectedAttributes[pendingAttributeChange.rowNum] }}
+      <div v-else class="p-8 space-y-4">
+        <Sheet v-model:open="showConfirmationSheet">
+          <SheetContent 
+            side="bottom" 
+            class="h-[50vh] rounded-t-xl"
+          >
+            <SheetHeader>
+              <SheetTitle>Change Attribute?</SheetTitle>
+              <SheetDescription>
+                Changing the attribute will reset its selected values. Are you sure you want to continue?
+              </SheetDescription>
+            </SheetHeader>
+            <div class="mt-6 flex flex-col gap-4">
+              <div class="flex items-center gap-2">
+                <div class="text-sm font-medium">Current Attribute:</div>
+                <div class="text-sm text-gray-500">
+                  {{ pendingAttributeChange?.rowNum && selectedAttributes[pendingAttributeChange.rowNum] }}
+                </div>
+              </div>
+              <div class="flex items-center gap-2">
+                <div class="text-sm font-medium">New Attribute:</div>
+                <div class="text-sm text-gray-500">
+                  {{ pendingAttributeChange?.newValue }}
+                </div>
+              </div>
+              <div class="flex items-center gap-2">
+                <div class="text-sm font-medium">Selected Values:</div>
+                <div class="text-sm text-gray-500">
+                  {{ pendingAttributeChange?.rowNum && selectedOptions[pendingAttributeChange.rowNum].join(', ') }}
+                </div>
               </div>
             </div>
-            <div class="flex items-center gap-2">
-              <div class="text-sm font-medium">New Attribute:</div>
-              <div class="text-sm text-gray-500">
-                {{ pendingAttributeChange?.newValue }}
+            <div class="absolute bottom-0 left-0 right-0 p-6 bg-white border-t">
+              <div class="flex justify-end gap-2">
+                <Button variant="outline" @click="cancelAttributeChange">
+                  Cancel
+                </Button>
+                <Button @click="confirmAttributeChange">
+                  Confirm Change
+                </Button>
               </div>
             </div>
-            <div class="flex items-center gap-2">
-              <div class="text-sm font-medium">Selected Values:</div>
-              <div class="text-sm text-gray-500">
-                {{ pendingAttributeChange?.rowNum && selectedOptions[pendingAttributeChange.rowNum].join(', ') }}
-              </div>
-            </div>
-          </div>
-          <div class="absolute bottom-0 left-0 right-0 p-6 bg-white border-t">
-            <div class="flex justify-end gap-2">
-              <Button variant="outline" @click="cancelAttributeChange">
-                Cancel
-              </Button>
-              <Button @click="confirmAttributeChange">
-                Confirm Change
-              </Button>
-            </div>
-          </div>
-        </SheetContent>
-      </Sheet>
+          </SheetContent>
+        </Sheet>
 
-      <!-- Notion-like table -->
-      <div class="mt-8 border rounded-lg overflow-hidden">
-        <!-- Name Row -->
-        <div class="flex items-center border-b hover:bg-gray-50">
-          <div class="w-16 border-r">
-            <button 
-              @click="toggleType"
-              class="w-full h-full px-2 py-3 text-sm font-medium text-gray-600 hover:bg-gray-100 focus:outline-none"
-            >
-              {{ selectedType }}
-            </button>
-          </div>
-          
-          <div class="flex-1">
-            <input
-              v-model="productName"
-              type="text"
-              placeholder="name"
-              class="w-full py-3 px-4 bg-transparent border-0 focus:outline-none placeholder:text-gray-400 text-sm"
-            />
-          </div>
-        </div>
-
-        <!-- Images Row -->
-        <div class="flex items-center border-b hover:bg-gray-50">
-          <!-- Primary Image Cell -->
-          <div class="w-16 border-r p-2">
-            <button 
-              @click="triggerPrimaryFileInput"
-              class="w-12 h-12 rounded border flex items-center justify-center hover:bg-gray-50 relative overflow-hidden"
-              :class="{ 'border-dashed border-gray-300': !primaryImage }"
-            >
-              <template v-if="primaryImage">
-                <img 
-                  :src="primaryImage" 
-                  class="w-full h-full object-cover"
-                  alt="Primary image"
-                />
-              </template>
-              <ImageIcon v-else class="w-4 h-4 text-gray-400" />
-            </button>
-            <input
-              ref="primaryFileInput"
-              type="file"
-              accept="image/*"
-              class="hidden"
-              @change="handlePrimaryImageUpload"
-            />
-          </div>
-          
-          <!-- Additional Images Cell -->
-          <div class="flex-1 p-2">
-            <div class="flex items-center gap-2 overflow-x-auto">
-              <!-- Uploaded Images -->
-              <div 
-                v-for="(image, index) in additionalImages" 
-                :key="index"
-                class="flex-shrink-0 w-12 h-12 rounded border overflow-hidden"
-              >
-                <img 
-                  :src="image" 
-                  class="w-full h-full object-cover"
-                  alt="Additional image"
-                />
-              </div>
-              
-              <!-- Add Image Button -->
+        <!-- Notion-like table -->
+        <div class="mt-8 border rounded-lg overflow-hidden">
+          <!-- Name Row -->
+          <div class="flex items-center border-b hover:bg-gray-50">
+            <div class="w-16 border-r">
               <button 
-                @click="triggerAdditionalFileInput"
-                class="flex-shrink-0 w-12 h-12 rounded border border-dashed border-gray-300 flex items-center justify-center hover:bg-gray-50"
+                @click="toggleType"
+                class="w-full h-full px-2 py-3 text-sm font-medium text-gray-600 hover:bg-gray-100 focus:outline-none"
               >
-                <Plus class="w-4 h-4 text-gray-400" />
+                {{ selectedType }}
               </button>
             </div>
-            <input
-              ref="additionalFileInput"
-              type="file"
-              accept="image/*"
-              class="hidden"
-              @change="handleAdditionalImageUpload"
-            />
+            
+            <div class="flex-1 flex items-center">
+              <input
+                v-model="productName"
+                type="text"
+                placeholder="name"
+                class="w-full py-3 px-4 bg-transparent border-0 focus:outline-none placeholder:text-gray-400 text-sm"
+              />
+              <button 
+                @click="openDescriptionEditor"
+                class="px-3 py-2 hover:bg-gray-100 rounded-md"
+              >
+                <ChevronRight class="h-4 w-4 text-gray-400" />
+              </button>
+            </div>
           </div>
-        </div>
 
-        <!-- Units and Category Row -->
-        <div class="flex items-center border-b hover:bg-gray-50">
-          <!-- Units Dropdown Cell -->
-          <div class="w-16 border-r">
-            <Select v-model="selectedUnit">
-              <SelectTrigger class="w-full h-full border-0 shadow-none focus:ring-0 px-2 py-3">
-                <SelectValue :placeholder="selectedUnit" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem 
-                  v-for="unit in units" 
-                  :key="unit" 
-                  :value="unit"
+          <!-- Images Row -->
+          <div class="flex items-center border-b hover:bg-gray-50">
+            <!-- Primary Image Cell -->
+            <div class="w-16 border-r p-2">
+              <button 
+                @click="triggerPrimaryFileInput"
+                class="w-12 h-12 rounded border flex items-center justify-center hover:bg-gray-50 relative overflow-hidden"
+                :class="{ 'border-dashed border-gray-300': !primaryImage }"
+              >
+                <template v-if="primaryImage">
+                  <img 
+                    :src="primaryImage" 
+                    class="w-full h-full object-cover"
+                    alt="Primary image"
+                  />
+                </template>
+                <ImageIcon v-else class="w-4 h-4 text-gray-400" />
+              </button>
+              <input
+                ref="primaryFileInput"
+                type="file"
+                accept="image/*"
+                class="hidden"
+                @change="handlePrimaryImageUpload"
+              />
+            </div>
+            
+            <!-- Additional Images Cell -->
+            <div class="flex-1 p-2">
+              <div class="flex items-center gap-2 overflow-x-auto">
+                <!-- Uploaded Images -->
+                <div 
+                  v-for="(image, index) in additionalImages" 
+                  :key="index"
+                  class="flex-shrink-0 w-12 h-12 rounded border overflow-hidden"
                 >
-                  {{ unit }}
-                </SelectItem>
-              </SelectContent>
-            </Select>
+                  <img 
+                    :src="image" 
+                    class="w-full h-full object-cover"
+                    alt="Additional image"
+                  />
+                </div>
+                
+                <!-- Add Image Button -->
+                <button 
+                  @click="triggerAdditionalFileInput"
+                  class="flex-shrink-0 w-12 h-12 rounded border border-dashed border-gray-300 flex items-center justify-center hover:bg-gray-50"
+                >
+                  <Plus class="w-4 h-4 text-gray-400" />
+                </button>
+              </div>
+              <input
+                ref="additionalFileInput"
+                type="file"
+                accept="image/*"
+                class="hidden"
+                @change="handleAdditionalImageUpload"
+              />
+            </div>
           </div>
-          
-          <!-- Category Input Cell -->
-          <div class="flex-1">
-            <input
-              v-model="category"
-              type="text"
-              placeholder="category"
-              class="w-full py-3 px-4 bg-transparent border-0 focus:outline-none placeholder:text-gray-400 text-sm"
-            />
-          </div>
-        </div>
 
-        <!-- Attribute Rows -->
-        <div v-for="rowNum in ['4', '5', '6']" :key="rowNum" class="flex items-center border-b hover:bg-gray-50">
-          <!-- Attribute Dropdown Cell -->
-          <div class="w-[120px] border-r flex-shrink-0">
-            <Select 
-              :model-value="selectedAttributes[rowNum]"
-              @update:model-value="handleAttributeChange(rowNum, $event)"
-              :disabled="!attributes.length"
-            >
-              <SelectTrigger class="w-full h-full border-0 shadow-none focus:ring-0 px-2 py-3">
-                <SelectValue>
+          <!-- Units and Category Row -->
+          <div class="flex items-center border-b hover:bg-gray-50">
+            <!-- Units Dropdown Cell -->
+            <div class="w-16 border-r">
+              <Select v-model="selectedUnit">
+                <SelectTrigger class="w-full h-full border-0 shadow-none focus:ring-0 px-2 py-3">
+                  <SelectValue :placeholder="selectedUnit" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem 
+                    v-for="unit in units" 
+                    :key="unit" 
+                    :value="unit"
+                  >
+                    {{ unit }}
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <!-- Category Input Cell -->
+            <div class="flex-1">
+              <input
+                v-model="category"
+                type="text"
+                placeholder="category"
+                class="w-full py-3 px-4 bg-transparent border-0 focus:outline-none placeholder:text-gray-400 text-sm"
+              />
+            </div>
+          </div>
+
+          <!-- Attribute Rows -->
+          <div v-for="rowNum in ['4', '5', '6']" :key="rowNum" class="flex items-center border-b hover:bg-gray-50">
+            <!-- Attribute Dropdown Cell -->
+            <div class="w-[120px] border-r flex-shrink-0">
+              <Select 
+                :model-value="selectedAttributes[rowNum]"
+                @update:model-value="handleAttributeChange(rowNum, $event)"
+                :disabled="!attributes.length"
+              >
+                <SelectTrigger class="w-full h-full border-0 shadow-none focus:ring-0 px-2 py-3">
+                  <SelectValue>
+                    <template v-if="selectedAttributes[rowNum]">
+                      {{ attributes.find(a => a.value === selectedAttributes[rowNum])?.label }}
+                    </template>
+                    <template v-else>
+                      {{ attributes.length ? 'Select' : 'Loading...' }}
+                    </template>
+                  </SelectValue>
+                  <ChevronDown class="h-4 w-4 opacity-0" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem 
+                    v-for="attr in getAvailableAttributes(rowNum)" 
+                    :key="attr.value" 
+                    :value="attr.value"
+                  >
+                    <span>{{ attr.label }}</span>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <!-- Options Multi-Select Cell -->
+            <div class="flex-1">
+              <Select 
+                v-if="selectedType === 'G'"
+                :model-value="selectedOptionsString(rowNum)"
+                @update:model-value="handleMultiSelectUpdate(rowNum, $event)"
+                :disabled="!selectedAttributes[rowNum]"
+              >
+                <SelectTrigger class="w-full h-full border-0 shadow-none focus:ring-0 px-4 py-3">
+                  <SelectValue>
+                    <template v-if="selectedOptions[rowNum]?.length">
+                      <div class="flex flex-wrap gap-1.5">
+                        <span 
+                          v-for="value in selectedOptions[rowNum]" 
+                          :key="value"
+                          class="inline-flex items-center text-xs bg-gray-100 text-gray-700 rounded-full px-2 py-0.5"
+                        >
+                          {{ value }}
+                        </span>
+                      </div>
+                    </template>
+                    <template v-else>
+                      <span class="text-gray-400">Select multiple values</span>
+                    </template>
+                  </SelectValue>
+                  <ChevronDown class="h-4 w-4 opacity-0" />
+                </SelectTrigger>
+                <SelectContent>
                   <template v-if="selectedAttributes[rowNum]">
-                    {{ attributes.find(a => a.value === selectedAttributes[rowNum])?.label }}
+                    <SelectItem
+                      v-for="option in getFilteredOptions(rowNum)"
+                      :key="option.id"
+                      :value="option.value"
+                    >
+                      <div class="flex items-center gap-2">
+                        <template v-if="option.type === 'color'">
+                          <div 
+                            class="w-4 h-4 rounded-sm" 
+                            :style="{ backgroundColor: option.visual }"
+                          />
+                        </template>
+                        <template v-else>
+                          <span class="w-4 text-center">{{ option.visual }}</span>
+                        </template>
+                        <span>{{ option.value }}</span>
+                        <span v-if="selectedOptions[rowNum].includes(option.value)" class="ml-auto">✓</span>
+                      </div>
+                    </SelectItem>
                   </template>
-                  <template v-else>
-                    {{ attributes.length ? 'Select' : 'Loading...' }}
-                  </template>
-                </SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem 
-                  v-for="attr in getAvailableAttributes(rowNum)" 
-                  :key="attr.value" 
-                  :value="attr.value"
-                >
-                  <span>{{ attr.label }}</span>
-                </SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          
-          <!-- Options Multi-Select Cell -->
-          <div class="flex-1">
-            <Select 
-              v-if="selectedType === 'G'"
-              :model-value="selectedOptionsString(rowNum)"
-              @update:model-value="handleMultiSelectUpdate(rowNum, $event)"
-              :disabled="!selectedAttributes[rowNum]"
-            >
-              <SelectTrigger class="w-full h-full border-0 shadow-none focus:ring-0 px-4 py-3">
-                <SelectValue>
-                  <template v-if="selectedOptions[rowNum]?.length">
-                    <div class="flex flex-wrap gap-1.5">
-                      <span 
-                        v-for="value in selectedOptions[rowNum]" 
-                        :key="value"
-                        class="inline-flex items-center text-xs bg-gray-100 text-gray-700 rounded-full px-2 py-0.5"
-                      >
-                        {{ value }}
-                      </span>
-                    </div>
-                  </template>
-                  <template v-else>
-                    <span class="text-gray-400">Select multiple values</span>
-                  </template>
-                </SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                <template v-if="selectedAttributes[rowNum]">
-                  <SelectItem
-                    v-for="option in getFilteredOptions(rowNum)"
-                    :key="option.id"
-                    :value="option.value"
-                  >
-                    <div class="flex items-center gap-2">
-                      <template v-if="option.type === 'color'">
-                        <div 
-                          class="w-4 h-4 rounded-sm" 
-                          :style="{ backgroundColor: option.visual }"
-                        />
-                      </template>
-                      <template v-else>
-                        <span class="w-4 text-center">{{ option.visual }}</span>
-                      </template>
-                      <span>{{ option.value }}</span>
-                      <span v-if="selectedOptions[rowNum].includes(option.value)" class="ml-auto">✓</span>
-                    </div>
-                  </SelectItem>
-                </template>
-                <div v-else class="p-2 text-sm text-gray-400">
-                  Select an attribute first
-                </div>
-              </SelectContent>
-            </Select>
+                  <div v-else class="p-2 text-sm text-gray-400">
+                    Select an attribute first
+                  </div>
+                </SelectContent>
+              </Select>
 
-            <Select 
-              v-else
-              :model-value="selectedOptions[rowNum][0] || ''"
-              @update:model-value="(val) => selectedOptions[rowNum] = [val]"
-              :disabled="!selectedAttributes[rowNum]"
-            >
-              <SelectTrigger class="w-full h-full border-0 shadow-none focus:ring-0 px-4 py-3">
-                <SelectValue>
-                  <template v-if="selectedOptions[rowNum]?.length">
-                    <span>{{ selectedOptions[rowNum][0] }}</span>
+              <Select 
+                v-else
+                :model-value="selectedOptions[rowNum][0] || ''"
+                @update:model-value="(val) => selectedOptions[rowNum] = [val]"
+                :disabled="!selectedAttributes[rowNum]"
+              >
+                <SelectTrigger class="w-full h-full border-0 shadow-none focus:ring-0 px-4 py-3">
+                  <SelectValue>
+                    <template v-if="selectedOptions[rowNum]?.length">
+                      <span>{{ selectedOptions[rowNum][0] }}</span>
+                    </template>
+                    <template v-else>
+                      <span class="text-gray-400">Select a value</span>
+                    </template>
+                  </SelectValue>
+                  <ChevronDown class="h-4 w-4 opacity-0" />
+                </SelectTrigger>
+                <SelectContent>
+                  <template v-if="selectedAttributes[rowNum]">
+                    <SelectItem
+                      v-for="option in getFilteredOptions(rowNum)"
+                      :key="option.id"
+                      :value="option.value"
+                    >
+                      <div class="flex items-center gap-2">
+                        <template v-if="option.type === 'color'">
+                          <div 
+                            class="w-4 h-4 rounded-sm" 
+                            :style="{ backgroundColor: option.visual }"
+                          />
+                        </template>
+                        <template v-else>
+                          <span class="w-4 text-center">{{ option.visual }}</span>
+                        </template>
+                        <span>{{ option.value }}</span>
+                      </div>
+                    </SelectItem>
                   </template>
-                  <template v-else>
-                    <span class="text-gray-400">Select a value</span>
-                  </template>
-                </SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                <template v-if="selectedAttributes[rowNum]">
-                  <SelectItem
-                    v-for="option in getFilteredOptions(rowNum)"
-                    :key="option.id"
-                    :value="option.value"
-                  >
-                    <div class="flex items-center gap-2">
-                      <template v-if="option.type === 'color'">
-                        <div 
-                          class="w-4 h-4 rounded-sm" 
-                          :style="{ backgroundColor: option.visual }"
-                        />
-                      </template>
-                      <template v-else>
-                        <span class="w-4 text-center">{{ option.visual }}</span>
-                      </template>
-                      <span>{{ option.value }}</span>
-                    </div>
-                  </SelectItem>
-                </template>
-                <div v-else class="p-2 text-sm text-gray-400">
-                  Select an attribute first
-                </div>
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-      </div>
-
-      <!-- Replace the existing SKU table with this updated version -->
-      <!-- Generated SKUs Table -->
-      <div class="border-t">
-        <div class="bg-gray-50 p-3">
-          <div class="font-medium text-sm text-muted-foreground">
-            Generated SKUs
+                  <div v-else class="p-2 text-sm text-gray-400">
+                    Select an attribute first
+                  </div>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         </div>
 
-        <div>
-          <template v-if="generatedSkus.length">
-            <div 
-              v-for="(item, index) in generatedSkus" 
-              :key="index"
-              class="border-t first:border-t-0"
-            >
-              <div class="p-3 hover:bg-gray-50/50">
-                <div class="text-sm font-medium">
-                  {{ item.sku }}
-                </div>
-                <div class="mt-1 text-xs text-gray-500">
-                  {{ item.combination.join(' / ') }}
+        <!-- Replace the existing SKU table with this updated version -->
+        <!-- Generated SKUs Table -->
+        <div class="border-t">
+          <div class="bg-gray-50 p-3">
+            <div class="font-medium text-sm text-muted-foreground">
+              Generated SKUs
+            </div>
+          </div>
+
+          <div>
+            <template v-if="generatedSkus.length">
+              <div 
+                v-for="(item, index) in generatedSkus" 
+                :key="index"
+                class="border-t first:border-t-0"
+              >
+                <div class="p-3 hover:bg-gray-50/50">
+                  <div class="text-sm font-medium">
+                    {{ item.sku }}
+                  </div>
+                  <div class="mt-1 text-xs text-gray-500">
+                    {{ item.combination.join(' / ') }}
+                  </div>
                 </div>
               </div>
+            </template>
+            <div 
+              v-else 
+              class="p-3 text-sm text-gray-500 text-center"
+            >
+              Enter product name, category and select attribute values to generate SKUs
             </div>
-          </template>
-          <div 
-            v-else 
-            class="p-3 text-sm text-gray-500 text-center"
-          >
-            Enter product name, category and select attribute values to generate SKUs
           </div>
         </div>
       </div>
     </div>
+
+    <!-- Keep the Sheet component outside the scrollable area -->
+    <Sheet v-model:open="showConfirmationSheet">
+      <!-- ... Sheet content remains the same ... -->
+    </Sheet>
+
+    <Sheet v-model:open="showDescriptionSheet">
+      <SheetContent side="right" class="w-[90vw] sm:w-[540px]">
+        <SheetHeader>
+          <SheetTitle>Product Description</SheetTitle>
+          <SheetDescription>
+            Add a detailed description for your product
+          </SheetDescription>
+        </SheetHeader>
+        
+        <div class="mt-6 space-y-6">
+          <div id="editor" class="min-h-[300px] border rounded-md" />
+        </div>
+        
+        <div class="absolute bottom-0 left-0 right-0 p-6 bg-white border-t">
+          <div class="flex justify-end gap-2">
+            <Button 
+              variant="outline" 
+              @click="showDescriptionSheet = false"
+            >
+              Cancel
+            </Button>
+            <Button 
+              @click="showDescriptionSheet = false"
+            >
+              Save
+            </Button>
+          </div>
+        </div>
+      </SheetContent>
+    </Sheet>
   </div>
 </template>
 
@@ -763,6 +867,37 @@ const getAvailableAttributes = (currentRowNum: string) => {
 
 :deep(.select-content) {
   @apply min-w-[100px];
+}
+
+:deep(.select-trigger svg) {
+  @apply opacity-100;
+}
+
+.w-[120px] :deep(.select-trigger svg),
+.flex-1 :deep(.select-trigger svg) {
+  @apply opacity-0;
+}
+
+/* Add these styles for better scrolling */
+.overflow-y-auto {
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Add to your existing styles */
+:deep(.codex-editor) {
+  @apply h-full;
+}
+
+:deep(.ce-block__content) {
+  @apply max-w-none mx-4;
+}
+
+:deep(.ce-toolbar__content) {
+  @apply max-w-none mx-4;
+}
+
+:deep(.codex-editor__redactor) {
+  @apply pb-16;
 }
 </style>
 
