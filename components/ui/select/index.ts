@@ -9,3 +9,9 @@ export { default as SelectScrollUpButton } from './SelectScrollUpButton.vue'
 export { default as SelectSeparator } from './SelectSeparator.vue'
 export { default as SelectTrigger } from './SelectTrigger.vue'
 export { default as SelectValue } from './SelectValue.vue'
+
+// Add or update the interface for Select props
+export interface SelectProps {
+  modelValue: string | string[]
+  multiple?: boolean
+}

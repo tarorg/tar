@@ -230,6 +230,24 @@ const handleSelectUpdate = (rowNum: string, value: string | string[]) => {
     selectedOptions.value[rowNum] = [value as string]
   }
 }
+
+// Add these methods to handle multi-select
+const selectedOptionsString = (rowNum: string): string => {
+  return selectedOptions.value[rowNum][0] || ''
+}
+
+const handleMultiSelectUpdate = (rowNum: string, value: string) => {
+  const currentValues = selectedOptions.value[rowNum]
+  const index = currentValues.indexOf(value)
+  
+  if (index === -1) {
+    // Add value if not present
+    selectedOptions.value[rowNum] = [...currentValues, value]
+  } else {
+    // Remove value if already present
+    selectedOptions.value[rowNum] = currentValues.filter(v => v !== value)
+  }
+}
 </script>
 
 <template>
@@ -422,20 +440,8 @@ const handleSelectUpdate = (rowNum: string, value: string | string[]) => {
           <div class="flex-1">
             <Select 
               v-if="selectedType === 'G'"
-              :model-value="selectedOptions[rowNum]"
-              @update:model-value="(val) => {
-                if (typeof val === 'string') {
-                  // If single value selected
-                  const index = selectedOptions[rowNum].indexOf(val)
-                  if (index === -1) {
-                    // Add if not exists
-                    selectedOptions[rowNum].push(val)
-                  } else {
-                    // Remove if exists
-                    selectedOptions[rowNum].splice(index, 1)
-                  }
-                }
-              }"
+              :model-value="selectedOptionsString(rowNum)"
+              @update:model-value="handleMultiSelectUpdate(rowNum, $event)"
               :disabled="!selectedAttributes[rowNum]"
             >
               <SelectTrigger class="w-full h-full border-0 shadow-none focus:ring-0 px-4 py-3">
@@ -473,8 +479,7 @@ const handleSelectUpdate = (rowNum: string, value: string | string[]) => {
                       <template v-else>
                         <span class="w-4 text-center">{{ option.visual }}</span>
                       </template>
-                      <span>{{ value }}</span>
-                      <!-- Show selected state -->
+                      <span>{{ option.value }}</span>
                       <span v-if="selectedOptions[rowNum].includes(option.value)" class="ml-auto">✓</span>
                     </div>
                   </SelectItem>
