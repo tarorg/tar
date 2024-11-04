@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted, watch, computed } from 'vue'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -56,6 +56,12 @@ interface SelectProps {
   modelValue: string | string[]
   disabled?: boolean
   multiple?: boolean
+}
+
+// Add these interfaces after the existing interfaces
+interface GeneratedSku {
+  sku: string
+  combination: string[]
 }
 
 const goBack = () => {
@@ -143,6 +149,69 @@ const selectedOptions = ref<{[key: string]: string[]}>({
 // Add loading state
 const isLoading = ref(true)
 const loadError = ref<string | null>(null)
+
+// Replace the existing generatedSkus computed property with this updated version
+const generatedSkus = computed(() => {
+  // Only proceed if we have name and category
+  if (!productName.value || !category.value) {
+    return []
+  }
+
+  // Get selected attributes (rows 4,5,6 that have both attribute and values selected)
+  const selectedAttrs = ['4', '5', '6'].filter(row => 
+    selectedAttributes.value[row] && 
+    selectedOptions.value[row] && 
+    selectedOptions.value[row].length > 0
+  )
+
+  if (selectedAttrs.length === 0) {
+    return []
+  }
+
+  // Get all possible combinations
+  const combinations: string[][] = []
+  
+  const generateCombinations = (current: string[], index: number) => {
+    if (index === selectedAttrs.length) {
+      combinations.push([...current])
+      return
+    }
+    
+    const rowNum = selectedAttrs[index]
+    const attribute = selectedAttributes.value[rowNum]
+    const values = selectedOptions.value[rowNum]
+
+    for (const value of values) {
+      // Include both attribute and value in the combination
+      current.push(`${attribute}:${value}`)
+      generateCombinations(current, index + 1)
+      current.pop()
+    }
+  }
+  
+  generateCombinations([], 0)
+  
+  // Generate SKUs for each combination
+  return combinations.map(combination => {
+    const namePrefix = productName.value.slice(0, 3).toUpperCase()
+    const typeIndicator = selectedType.value
+    const categoryPrefix = category.value.slice(0, 3).toUpperCase()
+    
+    // Create attribute suffix by taking first 3 letters of each value
+    const attributeSuffix = combination.map(pair => {
+      const [attr, value] = pair.split(':')
+      return value.slice(0, 3).toUpperCase()
+    }).join('')
+    
+    return {
+      sku: `${namePrefix}-${typeIndicator}-${categoryPrefix}-${attributeSuffix}`,
+      combination: combination.map(pair => {
+        const [attr, value] = pair.split(':')
+        return `${attr}: ${value}`
+      })
+    }
+  })
+})
 
 // Update the onMounted function with proper initialization
 onMounted(async () => {
@@ -238,9 +307,24 @@ const handleSelectUpdate = (rowNum: string, value: string | string[]) => {
   }
 }
 
-<<<<<<< HEAD
 // Add these methods to handle multi-select
-=======
+const selectedOptionsString = (rowNum: string): string => {
+  return selectedOptions.value[rowNum][0] || ''
+}
+
+const handleMultiSelectUpdate = (rowNum: string, value: string) => {
+  const currentValues = selectedOptions.value[rowNum]
+  const index = currentValues.indexOf(value)
+  
+  if (index === -1) {
+    // Add value if not present
+    selectedOptions.value[rowNum] = [...currentValues, value]
+  } else {
+    // Remove value if already present
+    selectedOptions.value[rowNum] = currentValues.filter(v => v !== value)
+  }
+}
+
 // Add these refs for handling attribute changes
 const showConfirmationSheet = ref(false)
 const pendingAttributeChange = ref<{
@@ -291,30 +375,6 @@ const getAvailableAttributes = (currentRowNum: string) => {
     !selectedValues.includes(attr.value)
   )
 }
-<<<<<<< HEAD
-
->>>>>>> 4c63d59938723274aad95d9a802dbe709f0b126d
-const selectedOptionsString = (rowNum: string): string => {
-  return selectedOptions.value[rowNum][0] || ''
-}
-
-const handleMultiSelectUpdate = (rowNum: string, value: string) => {
-  const currentValues = selectedOptions.value[rowNum]
-  const index = currentValues.indexOf(value)
-  
-  if (index === -1) {
-    // Add value if not present
-    selectedOptions.value[rowNum] = [...currentValues, value]
-  } else {
-    // Remove value if already present
-    selectedOptions.value[rowNum] = currentValues.filter(v => v !== value)
-  }
-}
-<<<<<<< HEAD
-=======
-=======
->>>>>>> b1d2c800a5b91a0861de1d329a29da9fb37f4e33
->>>>>>> 4c63d59938723274aad95d9a802dbe709f0b126d
 </script>
 
 <template>
@@ -582,13 +642,6 @@ const handleMultiSelectUpdate = (rowNum: string, value: string) => {
                         <span class="w-4 text-center">{{ option.visual }}</span>
                       </template>
                       <span>{{ option.value }}</span>
-<<<<<<< HEAD
-=======
-<<<<<<< HEAD
-=======
-                      <!-- Show selected state -->
->>>>>>> b1d2c800a5b91a0861de1d329a29da9fb37f4e33
->>>>>>> 4c63d59938723274aad95d9a802dbe709f0b126d
                       <span v-if="selectedOptions[rowNum].includes(option.value)" class="ml-auto">✓</span>
                     </div>
                   </SelectItem>
@@ -644,6 +697,41 @@ const handleMultiSelectUpdate = (rowNum: string, value: string) => {
           </div>
         </div>
       </div>
+
+      <!-- Replace the existing SKU table with this updated version -->
+      <!-- Generated SKUs Table -->
+      <div class="border-t">
+        <div class="bg-gray-50 p-3">
+          <div class="font-medium text-sm text-muted-foreground">
+            Generated SKUs
+          </div>
+        </div>
+
+        <div>
+          <template v-if="generatedSkus.length">
+            <div 
+              v-for="(item, index) in generatedSkus" 
+              :key="index"
+              class="border-t first:border-t-0"
+            >
+              <div class="p-3 hover:bg-gray-50/50">
+                <div class="text-sm font-medium">
+                  {{ item.sku }}
+                </div>
+                <div class="mt-1 text-xs text-gray-500">
+                  {{ item.combination.join(' / ') }}
+                </div>
+              </div>
+            </div>
+          </template>
+          <div 
+            v-else 
+            class="p-3 text-sm text-gray-500 text-center"
+          >
+            Enter product name, category and select attribute values to generate SKUs
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -675,64 +763,6 @@ const handleMultiSelectUpdate = (rowNum: string, value: string) => {
 
 :deep(.select-content) {
   @apply min-w-[100px];
-}
-
-/* Add these styles to your existing <style> section */
-.max-h-[200px] {
-  scrollbar-width: thin;
-  scrollbar-color: #cbd5e1 transparent;
-}
-
-.max-h-[200px]::-webkit-scrollbar {
-  width: 6px;
-}
-
-.max-h-[200px]::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.max-h-[200px]::-webkit-scrollbar-thumb {
-  background-color: #cbd5e1;
-  border-radius: 3px;
-}
-
-/* Update the scrollbar styles */
-.\[\.max-h-\[200px\]\] {
-  scrollbar-width: thin;
-  scrollbar-color: #cbd5e1 transparent;
-}
-
-.\[\.max-h-\[200px\]\]::-webkit-scrollbar {
-  width: 6px;
-}
-
-.\[\.max-h-\[200px\]\]::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.\[\.max-h-\[200px\]\]::-webkit-scrollbar-thumb {
-  background-color: #cbd5e1;
-  border-radius: 3px;
-}
-
-/* Alternative approach using a regular class name */
-.scroll-container {
-  scrollbar-width: thin;
-  scrollbar-color: #cbd5e1 transparent;
-  max-height: 200px;
-}
-
-.scroll-container::-webkit-scrollbar {
-  width: 6px;
-}
-
-.scroll-container::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.scroll-container::-webkit-scrollbar-thumb {
-  background-color: #cbd5e1;
-  border-radius: 3px;
 }
 </style>
 
