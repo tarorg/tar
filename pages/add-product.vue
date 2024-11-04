@@ -18,6 +18,13 @@ import {
   ChevronDown,
 } from 'lucide-vue-next'
 import { initDB, getAttributes, getOptions, dbStatus } from '@/services/indexedDB'
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from '@/components/ui/sheet'
 
 interface AttributeOption {
   value: string
@@ -163,7 +170,7 @@ onMounted(async () => {
     
     // Map the attributes
     attributes.value = savedAttributes.map(attr => ({
-      value: attr.value.toLowerCase(),
+      value: attr.value,
       label: attr.value,
       type: attr.type || 'text'
     }))
@@ -182,11 +189,11 @@ onMounted(async () => {
 })
 
 const getFilteredOptions = (rowNum: string) => {
-  const attribute = selectedAttributes.value[rowNum]?.toLowerCase()
+  const attribute = selectedAttributes.value[rowNum]
   if (!attribute) return []
   
   return optionValues.value.filter(option => 
-    option.attribute.toLowerCase() === attribute
+    option.attribute === attribute
   )
 }
 
@@ -230,6 +237,74 @@ const handleSelectUpdate = (rowNum: string, value: string | string[]) => {
     selectedOptions.value[rowNum] = [value as string]
   }
 }
+
+// Add these refs for handling attribute changes
+const showConfirmationSheet = ref(false)
+const pendingAttributeChange = ref<{
+  rowNum: string;
+  newValue: string;
+} | null>(null)
+
+// Add these methods for handling attribute changes
+const handleAttributeChange = (rowNum: string, newValue: string) => {
+  if (selectedAttributes.value[rowNum] !== newValue && selectedOptions.value[rowNum].length > 0) {
+    // Store pending change and show confirmation
+    pendingAttributeChange.value = { rowNum, newValue }
+    showConfirmationSheet.value = true
+  } else {
+    // If no values selected or same attribute, change directly
+    applyAttributeChange(rowNum, newValue)
+  }
+}
+
+const applyAttributeChange = (rowNum: string, newValue: string) => {
+  selectedAttributes.value[rowNum] = newValue
+  selectedOptions.value[rowNum] = [] // Reset options when attribute changes
+}
+
+const confirmAttributeChange = () => {
+  if (pendingAttributeChange.value) {
+    const { rowNum, newValue } = pendingAttributeChange.value
+    applyAttributeChange(rowNum, newValue)
+  }
+  showConfirmationSheet.value = false
+  pendingAttributeChange.value = null
+}
+
+const cancelAttributeChange = () => {
+  showConfirmationSheet.value = false
+  pendingAttributeChange.value = null
+}
+
+// Add this method to filter available attributes
+const getAvailableAttributes = (currentRowNum: string) => {
+  // Get all selected attributes except the current row
+  const selectedValues = Object.entries(selectedAttributes.value)
+    .filter(([rowNum]) => rowNum !== currentRowNum)
+    .map(([_, value]) => value)
+
+  // Filter out attributes that are already selected in other rows
+  return attributes.value.filter(attr => 
+    !selectedValues.includes(attr.value)
+  )
+}
+
+const selectedOptionsString = (rowNum: string): string => {
+  return selectedOptions.value[rowNum][0] || ''
+}
+
+const handleMultiSelectUpdate = (rowNum: string, value: string) => {
+  const currentValues = selectedOptions.value[rowNum]
+  const index = currentValues.indexOf(value)
+  
+  if (index === -1) {
+    // Add value if not present
+    selectedOptions.value[rowNum] = [...currentValues, value]
+  } else {
+    // Remove value if already present
+    selectedOptions.value[rowNum] = currentValues.filter(v => v !== value)
+  }
+}
 </script>
 
 <template>
@@ -263,12 +338,49 @@ const handleSelectUpdate = (rowNum: string, value: string | string[]) => {
     </div>
 
     <div v-else class="flex-1 space-y-4 p-8">
-      <div class="space-y-4">
-        <h2 class="text-2xl font-bold tracking-tight">Add New Product</h2>
-        <p class="text-muted-foreground">
-          Fill in the details below to add a new product.
-        </p>
-      </div>
+      <Sheet v-model:open="showConfirmationSheet">
+        <SheetContent 
+          side="bottom" 
+          class="h-[50vh] rounded-t-xl"
+        >
+          <SheetHeader>
+            <SheetTitle>Change Attribute?</SheetTitle>
+            <SheetDescription>
+              Changing the attribute will reset its selected values. Are you sure you want to continue?
+            </SheetDescription>
+          </SheetHeader>
+          <div class="mt-6 flex flex-col gap-4">
+            <div class="flex items-center gap-2">
+              <div class="text-sm font-medium">Current Attribute:</div>
+              <div class="text-sm text-gray-500">
+                {{ pendingAttributeChange?.rowNum && selectedAttributes[pendingAttributeChange.rowNum] }}
+              </div>
+            </div>
+            <div class="flex items-center gap-2">
+              <div class="text-sm font-medium">New Attribute:</div>
+              <div class="text-sm text-gray-500">
+                {{ pendingAttributeChange?.newValue }}
+              </div>
+            </div>
+            <div class="flex items-center gap-2">
+              <div class="text-sm font-medium">Selected Values:</div>
+              <div class="text-sm text-gray-500">
+                {{ pendingAttributeChange?.rowNum && selectedOptions[pendingAttributeChange.rowNum].join(', ') }}
+              </div>
+            </div>
+          </div>
+          <div class="absolute bottom-0 left-0 right-0 p-6 bg-white border-t">
+            <div class="flex justify-end gap-2">
+              <Button variant="outline" @click="cancelAttributeChange">
+                Cancel
+              </Button>
+              <Button @click="confirmAttributeChange">
+                Confirm Change
+              </Button>
+            </div>
+          </div>
+        </SheetContent>
+      </Sheet>
 
       <!-- Notion-like table -->
       <div class="mt-8 border rounded-lg overflow-hidden">
@@ -390,13 +502,14 @@ const handleSelectUpdate = (rowNum: string, value: string | string[]) => {
           <!-- Attribute Dropdown Cell -->
           <div class="w-[120px] border-r flex-shrink-0">
             <Select 
-              v-model="selectedAttributes[rowNum]"
+              :model-value="selectedAttributes[rowNum]"
+              @update:model-value="handleAttributeChange(rowNum, $event)"
               :disabled="!attributes.length"
             >
               <SelectTrigger class="w-full h-full border-0 shadow-none focus:ring-0 px-2 py-3">
                 <SelectValue>
                   <template v-if="selectedAttributes[rowNum]">
-                    {{ attributes.find(a => a.value === selectedAttributes[rowNum])?.label || selectedAttributes[rowNum] }}
+                    {{ attributes.find(a => a.value === selectedAttributes[rowNum])?.label }}
                   </template>
                   <template v-else>
                     {{ attributes.length ? 'Select' : 'Loading...' }}
@@ -405,14 +518,11 @@ const handleSelectUpdate = (rowNum: string, value: string | string[]) => {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem 
-                  v-for="attr in attributes" 
+                  v-for="attr in getAvailableAttributes(rowNum)" 
                   :key="attr.value" 
                   :value="attr.value"
                 >
-                  <div class="flex items-center gap-2">
-                    <span>{{ attr.label }}</span>
-                    <span class="text-xs text-gray-400">({{ attr.type }})</span>
-                  </div>
+                  <span>{{ attr.label }}</span>
                 </SelectItem>
               </SelectContent>
             </Select>
@@ -422,20 +532,8 @@ const handleSelectUpdate = (rowNum: string, value: string | string[]) => {
           <div class="flex-1">
             <Select 
               v-if="selectedType === 'G'"
-              :model-value="selectedOptions[rowNum]"
-              @update:model-value="(val) => {
-                if (typeof val === 'string') {
-                  // If single value selected
-                  const index = selectedOptions[rowNum].indexOf(val)
-                  if (index === -1) {
-                    // Add if not exists
-                    selectedOptions[rowNum].push(val)
-                  } else {
-                    // Remove if exists
-                    selectedOptions[rowNum].splice(index, 1)
-                  }
-                }
-              }"
+              :model-value="selectedOptionsString(rowNum)"
+              @update:model-value="handleMultiSelectUpdate(rowNum, $event)"
               :disabled="!selectedAttributes[rowNum]"
             >
               <SelectTrigger class="w-full h-full border-0 shadow-none focus:ring-0 px-4 py-3">
@@ -473,8 +571,7 @@ const handleSelectUpdate = (rowNum: string, value: string | string[]) => {
                       <template v-else>
                         <span class="w-4 text-center">{{ option.visual }}</span>
                       </template>
-                      <span>{{ value }}</span>
-                      <!-- Show selected state -->
+                      <span>{{ option.value }}</span>
                       <span v-if="selectedOptions[rowNum].includes(option.value)" class="ml-auto">✓</span>
                     </div>
                   </SelectItem>
