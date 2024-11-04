@@ -192,12 +192,11 @@ const getFilteredOptions = (rowNum: string) => {
 
 // Update the watch section to handle type changes
 watch(selectedType, (newType) => {
-  // Reset selections when switching types
-  for (const key of Object.keys(selectedOptions.value)) {
-    if (newType === 'I' && selectedOptions.value[key].length > 1) {
-      // Keep only the first selection when switching to 'I'
+  if (newType === 'I') {
+    // Keep only first value when switching to single select
+    Object.keys(selectedOptions.value).forEach(key => {
       selectedOptions.value[key] = selectedOptions.value[key].slice(0, 1)
-    }
+    })
   }
 })
 
@@ -423,9 +422,19 @@ const handleSelectUpdate = (rowNum: string, value: string | string[]) => {
           <div class="flex-1">
             <Select 
               v-if="selectedType === 'G'"
-              :model-value="selectedOptions[rowNum].join(',')"
+              :model-value="selectedOptions[rowNum]"
               @update:model-value="(val) => {
-                selectedOptions[rowNum] = val ? val.split(',') : []
+                if (typeof val === 'string') {
+                  // If single value selected
+                  const index = selectedOptions[rowNum].indexOf(val)
+                  if (index === -1) {
+                    // Add if not exists
+                    selectedOptions[rowNum].push(val)
+                  } else {
+                    // Remove if exists
+                    selectedOptions[rowNum].splice(index, 1)
+                  }
+                }
               }"
               :disabled="!selectedAttributes[rowNum]"
             >
@@ -464,7 +473,9 @@ const handleSelectUpdate = (rowNum: string, value: string | string[]) => {
                       <template v-else>
                         <span class="w-4 text-center">{{ option.visual }}</span>
                       </template>
-                      <span>{{ option.value }}</span>
+                      <span>{{ value }}</span>
+                      <!-- Show selected state -->
+                      <span v-if="selectedOptions[rowNum].includes(option.value)" class="ml-auto">✓</span>
                     </div>
                   </SelectItem>
                 </template>
