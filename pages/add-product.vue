@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -37,6 +37,18 @@ interface OptionValue {
 interface AttributeType {
   Type: string
   values: string[]
+}
+
+// First, add this interface near the top with other interfaces
+interface SelectValue {
+  value: string | string[]
+}
+
+// Update or add these interfaces at the top of the script section
+interface SelectProps {
+  modelValue: string | string[]
+  disabled?: boolean
+  multiple?: boolean
 }
 
 const goBack = () => {
@@ -169,12 +181,55 @@ onMounted(async () => {
   }
 })
 
-const getFilteredOptions = (rowNumber: string) => {
-  const attribute = selectedAttributes.value[rowNumber]?.toLowerCase()
+const getFilteredOptions = (rowNum: string) => {
+  const attribute = selectedAttributes.value[rowNum]?.toLowerCase()
   if (!attribute) return []
+  
   return optionValues.value.filter(option => 
     option.attribute.toLowerCase() === attribute
   )
+}
+
+// Update the watch section to handle type changes
+watch(selectedType, (newType) => {
+  // Reset selections when switching types
+  for (const key of Object.keys(selectedOptions.value)) {
+    if (newType === 'I' && selectedOptions.value[key].length > 1) {
+      // Keep only the first selection when switching to 'I'
+      selectedOptions.value[key] = selectedOptions.value[key].slice(0, 1)
+    }
+  }
+})
+
+// Update the handler for option selection
+const handleOptionSelect = (rowNum: string, value: string) => {
+  if (selectedType.value === 'G') {
+    const index = selectedOptions.value[rowNum].indexOf(value)
+    if (index === -1) {
+      selectedOptions.value[rowNum].push(value)
+    } else {
+      selectedOptions.value[rowNum].splice(index, 1)
+    }
+  } else {
+    selectedOptions.value[rowNum] = [value]
+  }
+}
+
+// Add this computed property
+const getSelectModelValue = (rowNum: string) => {
+  if (selectedType.value === 'G') {
+    return selectedOptions.value[rowNum]
+  }
+  return selectedOptions.value[rowNum][0] || ''
+}
+
+// Update the handler
+const handleSelectUpdate = (rowNum: string, value: string | string[]) => {
+  if (selectedType.value === 'G') {
+    selectedOptions.value[rowNum] = Array.isArray(value) ? value : [value]
+  } else {
+    selectedOptions.value[rowNum] = [value as string]
+  }
 }
 </script>
 
@@ -367,25 +422,71 @@ const getFilteredOptions = (rowNumber: string) => {
           <!-- Options Multi-Select Cell -->
           <div class="flex-1">
             <Select 
-              v-model="selectedOptions[rowNum]" 
+              v-if="selectedType === 'G'"
+              :model-value="selectedOptions[rowNum].join(',')"
+              @update:model-value="(val) => {
+                selectedOptions[rowNum] = val ? val.split(',') : []
+              }"
               :disabled="!selectedAttributes[rowNum]"
-              multiple
             >
               <SelectTrigger class="w-full h-full border-0 shadow-none focus:ring-0 px-4 py-3">
                 <SelectValue>
                   <template v-if="selectedOptions[rowNum]?.length">
-                    <div class="flex flex-wrap gap-1">
+                    <div class="flex flex-wrap gap-1.5">
                       <span 
                         v-for="value in selectedOptions[rowNum]" 
                         :key="value"
-                        class="inline-flex items-center text-xs bg-primary/10 rounded px-1"
+                        class="inline-flex items-center text-xs bg-gray-100 text-gray-700 rounded-full px-2 py-0.5"
                       >
                         {{ value }}
                       </span>
                     </div>
                   </template>
                   <template v-else>
-                    <span class="text-gray-400">Select values</span>
+                    <span class="text-gray-400">Select multiple values</span>
+                  </template>
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                <template v-if="selectedAttributes[rowNum]">
+                  <SelectItem
+                    v-for="option in getFilteredOptions(rowNum)"
+                    :key="option.id"
+                    :value="option.value"
+                  >
+                    <div class="flex items-center gap-2">
+                      <template v-if="option.type === 'color'">
+                        <div 
+                          class="w-4 h-4 rounded-sm" 
+                          :style="{ backgroundColor: option.visual }"
+                        />
+                      </template>
+                      <template v-else>
+                        <span class="w-4 text-center">{{ option.visual }}</span>
+                      </template>
+                      <span>{{ option.value }}</span>
+                    </div>
+                  </SelectItem>
+                </template>
+                <div v-else class="p-2 text-sm text-gray-400">
+                  Select an attribute first
+                </div>
+              </SelectContent>
+            </Select>
+
+            <Select 
+              v-else
+              :model-value="selectedOptions[rowNum][0] || ''"
+              @update:model-value="(val) => selectedOptions[rowNum] = [val]"
+              :disabled="!selectedAttributes[rowNum]"
+            >
+              <SelectTrigger class="w-full h-full border-0 shadow-none focus:ring-0 px-4 py-3">
+                <SelectValue>
+                  <template v-if="selectedOptions[rowNum]?.length">
+                    <span>{{ selectedOptions[rowNum][0] }}</span>
+                  </template>
+                  <template v-else>
+                    <span class="text-gray-400">Select a value</span>
                   </template>
                 </SelectValue>
               </SelectTrigger>
@@ -466,6 +567,45 @@ const getFilteredOptions = (rowNumber: string) => {
 }
 
 .max-h-[200px]::-webkit-scrollbar-thumb {
+  background-color: #cbd5e1;
+  border-radius: 3px;
+}
+
+/* Update the scrollbar styles */
+.\[\.max-h-\[200px\]\] {
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 transparent;
+}
+
+.\[\.max-h-\[200px\]\]::-webkit-scrollbar {
+  width: 6px;
+}
+
+.\[\.max-h-\[200px\]\]::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.\[\.max-h-\[200px\]\]::-webkit-scrollbar-thumb {
+  background-color: #cbd5e1;
+  border-radius: 3px;
+}
+
+/* Alternative approach using a regular class name */
+.scroll-container {
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 transparent;
+  max-height: 200px;
+}
+
+.scroll-container::-webkit-scrollbar {
+  width: 6px;
+}
+
+.scroll-container::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scroll-container::-webkit-scrollbar-thumb {
   background-color: #cbd5e1;
   border-radius: 3px;
 }
