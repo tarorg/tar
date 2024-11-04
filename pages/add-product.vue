@@ -288,6 +288,7 @@ const getAvailableAttributes = (currentRowNum: string) => {
     !selectedValues.includes(attr.value)
   )
 }
+<<<<<<< HEAD
 
 const selectedOptionsString = (rowNum: string): string => {
   return selectedOptions.value[rowNum][0] || ''
@@ -305,6 +306,8 @@ const handleMultiSelectUpdate = (rowNum: string, value: string) => {
     selectedOptions.value[rowNum] = currentValues.filter(v => v !== value)
   }
 }
+=======
+>>>>>>> b1d2c800a5b91a0861de1d329a29da9fb37f4e33
 </script>
 
 <template>
@@ -572,6 +575,10 @@ const handleMultiSelectUpdate = (rowNum: string, value: string) => {
                         <span class="w-4 text-center">{{ option.visual }}</span>
                       </template>
                       <span>{{ option.value }}</span>
+<<<<<<< HEAD
+=======
+                      <!-- Show selected state -->
+>>>>>>> b1d2c800a5b91a0861de1d329a29da9fb37f4e33
                       <span v-if="selectedOptions[rowNum].includes(option.value)" class="ml-auto">✓</span>
                     </div>
                   </SelectItem>
