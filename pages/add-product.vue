@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -17,6 +17,27 @@ import {
   Image as ImageIcon,
   ChevronDown,
 } from 'lucide-vue-next'
+import { initDB, getAttributes, getOptions, dbStatus } from '@/services/indexedDB'
+
+interface AttributeOption {
+  value: string
+  label: string
+  type: string
+}
+
+interface OptionValue {
+  id: number
+  attribute: string
+  value: string
+  visual: string
+  type: string
+}
+
+// Add this interface to better type the attributes from attribute.json
+interface AttributeType {
+  Type: string
+  values: string[]
+}
 
 const goBack = () => {
   navigateTo('/products')
@@ -86,6 +107,75 @@ const units = [
   'm',
   'cm',
 ]
+
+const attributes = ref<AttributeOption[]>([])
+const optionValues = ref<OptionValue[]>([])
+const selectedAttributes = ref<{[key: string]: string}>({
+  '4': '',
+  '5': '',
+  '6': ''
+})
+const selectedOptions = ref<{[key: string]: string[]}>({
+  '4': [],
+  '5': [],
+  '6': []
+})
+
+// Add loading state
+const isLoading = ref(true)
+const loadError = ref<string | null>(null)
+
+// Update the onMounted function with proper initialization
+onMounted(async () => {
+  try {
+    isLoading.value = true
+    loadError.value = null
+
+    // Wait for DB initialization
+    await initDB()
+
+    // Wait for DB to be ready
+    while (dbStatus.value === 'loading') {
+      await new Promise(resolve => setTimeout(resolve, 100))
+    }
+
+    if (dbStatus.value === 'error') {
+      throw new Error('Database failed to initialize')
+    }
+
+    // Load data
+    const [savedAttributes, savedOptions] = await Promise.all([
+      getAttributes(),
+      getOptions()
+    ])
+    
+    // Map the attributes
+    attributes.value = savedAttributes.map(attr => ({
+      value: attr.value.toLowerCase(),
+      label: attr.value,
+      type: attr.type || 'text'
+    }))
+
+    optionValues.value = savedOptions
+
+    console.log('Loaded attributes:', attributes.value)
+    console.log('Loaded options:', optionValues.value)
+
+  } catch (error) {
+    console.error('Failed to load attributes and options:', error)
+    loadError.value = 'Failed to load data. Please try again.'
+  } finally {
+    isLoading.value = false
+  }
+})
+
+const getFilteredOptions = (rowNumber: string) => {
+  const attribute = selectedAttributes.value[rowNumber]?.toLowerCase()
+  if (!attribute) return []
+  return optionValues.value.filter(option => 
+    option.attribute.toLowerCase() === attribute
+  )
+}
 </script>
 
 <template>
@@ -110,7 +200,15 @@ const units = [
       </div>
     </header>
 
-    <div class="flex-1 space-y-4 p-8">
+    <div v-if="isLoading" class="flex items-center justify-center p-4">
+      <div class="text-sm text-gray-500">Loading...</div>
+    </div>
+
+    <div v-else-if="loadError" class="flex items-center justify-center p-4">
+      <div class="text-sm text-red-500">{{ loadError }}</div>
+    </div>
+
+    <div v-else class="flex-1 space-y-4 p-8">
       <div class="space-y-4">
         <h2 class="text-2xl font-bold tracking-tight">Add New Product</h2>
         <p class="text-muted-foreground">
@@ -232,6 +330,93 @@ const units = [
             />
           </div>
         </div>
+
+        <!-- Attribute Rows -->
+        <div v-for="rowNum in ['4', '5', '6']" :key="rowNum" class="flex items-center border-b hover:bg-gray-50">
+          <!-- Attribute Dropdown Cell -->
+          <div class="w-[120px] border-r flex-shrink-0">
+            <Select 
+              v-model="selectedAttributes[rowNum]"
+              :disabled="!attributes.length"
+            >
+              <SelectTrigger class="w-full h-full border-0 shadow-none focus:ring-0 px-2 py-3">
+                <SelectValue>
+                  <template v-if="selectedAttributes[rowNum]">
+                    {{ attributes.find(a => a.value === selectedAttributes[rowNum])?.label || selectedAttributes[rowNum] }}
+                  </template>
+                  <template v-else>
+                    {{ attributes.length ? 'Select' : 'Loading...' }}
+                  </template>
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem 
+                  v-for="attr in attributes" 
+                  :key="attr.value" 
+                  :value="attr.value"
+                >
+                  <div class="flex items-center gap-2">
+                    <span>{{ attr.label }}</span>
+                    <span class="text-xs text-gray-400">({{ attr.type }})</span>
+                  </div>
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          
+          <!-- Options Multi-Select Cell -->
+          <div class="flex-1">
+            <Select 
+              v-model="selectedOptions[rowNum]" 
+              :disabled="!selectedAttributes[rowNum]"
+              multiple
+            >
+              <SelectTrigger class="w-full h-full border-0 shadow-none focus:ring-0 px-4 py-3">
+                <SelectValue>
+                  <template v-if="selectedOptions[rowNum]?.length">
+                    <div class="flex flex-wrap gap-1">
+                      <span 
+                        v-for="value in selectedOptions[rowNum]" 
+                        :key="value"
+                        class="inline-flex items-center text-xs bg-primary/10 rounded px-1"
+                      >
+                        {{ value }}
+                      </span>
+                    </div>
+                  </template>
+                  <template v-else>
+                    <span class="text-gray-400">Select values</span>
+                  </template>
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                <template v-if="selectedAttributes[rowNum]">
+                  <SelectItem
+                    v-for="option in getFilteredOptions(rowNum)"
+                    :key="option.id"
+                    :value="option.value"
+                  >
+                    <div class="flex items-center gap-2">
+                      <template v-if="option.type === 'color'">
+                        <div 
+                          class="w-4 h-4 rounded-sm" 
+                          :style="{ backgroundColor: option.visual }"
+                        />
+                      </template>
+                      <template v-else>
+                        <span class="w-4 text-center">{{ option.visual }}</span>
+                      </template>
+                      <span>{{ option.value }}</span>
+                    </div>
+                  </SelectItem>
+                </template>
+                <div v-else class="p-2 text-sm text-gray-400">
+                  Select an attribute first
+                </div>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -264,6 +449,25 @@ const units = [
 
 :deep(.select-content) {
   @apply min-w-[100px];
+}
+
+/* Add these styles to your existing <style> section */
+.max-h-[200px] {
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 transparent;
+}
+
+.max-h-[200px]::-webkit-scrollbar {
+  width: 6px;
+}
+
+.max-h-[200px]::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.max-h-[200px]::-webkit-scrollbar-thumb {
+  background-color: #cbd5e1;
+  border-radius: 3px;
 }
 </style>
 
