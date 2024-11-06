@@ -30,6 +30,8 @@ import EditorJS from '@editorjs/editorjs'
 import Header from '@editorjs/header'
 import List from '@editorjs/list'
 import Paragraph from '@editorjs/paragraph'
+import ImageTool from '@editorjs/image'
+import Table from '@editorjs/table'
 
 interface AttributeOption {
   value: string
@@ -399,7 +401,9 @@ const getAvailableAttributes = (currentRowNum: string) => {
 // Add these refs
 const showDescriptionSheet = ref(false)
 const editor = ref<EditorJS | null>(null)
-const editorData = ref({})
+const editorData = ref({
+  blocks: []
+})
 
 // Add this function to initialize Editor.js
 const initEditor = () => {
@@ -407,9 +411,11 @@ const initEditor = () => {
 
   editor.value = new EditorJS({
     holder: 'editor',
+    placeholder: 'Start writing your product description...',
     tools: {
       header: {
         class: Header,
+        inlineToolbar: true,
         config: {
           levels: [2, 3, 4],
           defaultLevel: 3
@@ -422,13 +428,58 @@ const initEditor = () => {
       paragraph: {
         class: Paragraph,
         inlineToolbar: true
+      },
+      image: {
+        class: ImageTool,
+        config: {
+          uploader: {
+            uploadByFile(file: File) {
+              return new Promise((resolve) => {
+                const reader = new FileReader()
+                reader.onload = (e) => {
+                  resolve({
+                    success: 1,
+                    file: {
+                      url: e.target?.result
+                    }
+                  })
+                }
+                reader.readAsDataURL(file)
+              })
+            }
+          }
+        }
+      },
+      table: {
+        class: Table,
+        inlineToolbar: true,
+        config: {
+          rows: 2,
+          cols: 3,
+        },
       }
     },
     data: editorData.value,
     onChange: async () => {
-      editorData.value = await editor.value?.save() || {}
+      const savedData = await editor.value?.save()
+      if (savedData) {
+        editorData.value = savedData
+      }
     }
   })
+}
+
+// Add this method to handle description save
+const saveDescription = async () => {
+  if (editor.value) {
+    try {
+      const savedData = await editor.value.save()
+      editorData.value = savedData
+      showDescriptionSheet.value = false
+    } catch (error) {
+      console.error('Failed to save description:', error)
+    }
+  }
 }
 
 // Add cleanup function
@@ -625,7 +676,7 @@ const getSkuTotalStock = (sku: string) => {
 
 <template>
   <div class="flex flex-col h-screen">
-    <!-- Fixed Header -->
+    <!-- Replace the Fixed Header section -->
     <header class="sticky top-0 flex h-16 items-center justify-between border-b bg-white px-2 md:px-6 z-10">
       <div class="flex items-center">
         <Button variant="ghost" size="icon" class="mr-2" @click="goBack">
@@ -634,19 +685,18 @@ const getSkuTotalStock = (sku: string) => {
         </Button>
         <h1 class="text-sm font-semibold">Add Product</h1>
       </div>
-      <div class="flex items-center space-x-2">
-        <Button @click="goBack" variant="ghost" size="icon">
-          <X class="h-5 w-5" />
-          <span class="sr-only">Cancel</span>
-        </Button>
-        <Button @click="saveProduct" variant="ghost" size="icon">
-          <Save class="h-5 w-5" />
-          <span class="sr-only">Save Product</span>
+      <div>
+        <Button 
+          variant="ghost" 
+          @click="saveProduct"
+          class="px-4"
+        >
+          Save
         </Button>
       </div>
     </header>
 
-    <!-- Scrollable Content -->
+    <!-- Remove the empty space by removing or updating the div below header -->
     <div class="flex-1 overflow-y-auto">
       <div v-if="isLoading" class="flex items-center justify-center p-4">
         <div class="text-sm text-gray-500">Loading...</div>
@@ -1005,32 +1055,32 @@ const getSkuTotalStock = (sku: string) => {
       <!-- ... Sheet content remains the same ... -->
     </Sheet>
 
+    <!-- Replace the Description Sheet -->
     <Sheet v-model:open="showDescriptionSheet">
-      <SheetContent side="right" class="w-[90vw] sm:w-[540px]">
-        <SheetHeader>
-          <SheetTitle>Product Description</SheetTitle>
-          <SheetDescription>
-            Add a detailed description for your product
-          </SheetDescription>
-        </SheetHeader>
-        
-        <div class="mt-6 space-y-6">
-          <div id="editor" class="min-h-[300px] border rounded-md" />
-        </div>
-        
-        <div class="absolute bottom-0 left-0 right-0 p-6 bg-white border-t">
-          <div class="flex justify-end gap-2">
+      <SheetContent side="right" class="w-full">
+        <div class="flex flex-col h-full">
+          <!-- Top Bar -->
+          <div class="flex items-center justify-between p-4 border-b">
             <Button 
-              variant="outline" 
+              variant="ghost" 
+              size="icon"
               @click="showDescriptionSheet = false"
+              class="mr-auto"
             >
-              Cancel
+              <ArrowLeft class="h-5 w-5" />
             </Button>
             <Button 
-              @click="showDescriptionSheet = false"
+              variant="ghost"
+              class="px-4"
+              @click="saveDescription"
             >
               Save
             </Button>
+          </div>
+
+          <!-- Editor Area -->
+          <div class="flex-1 px-4 overflow-y-auto">
+            <div id="editor" />
           </div>
         </div>
       </SheetContent>
@@ -1609,6 +1659,87 @@ const getSkuTotalStock = (sku: string) => {
 /* Update existing hover style */
 .hover\:bg-gray-50:hover :deep(input) {
   background-color: transparent !important;
+}
+
+/* Add to your existing styles */
+:deep(.codex-editor) {
+  padding: 0;
+}
+
+:deep(.ce-toolbar__content) {
+  max-width: none;
+  margin: 0;
+}
+
+:deep(.ce-block__content) {
+  max-width: none;
+  margin: 0;
+}
+
+:deep(.codex-editor__redactor) {
+  padding-bottom: 80px !important;
+}
+
+:deep(.ce-toolbar__plus) {
+  left: -30px;
+}
+
+:deep(.ce-toolbar__actions) {
+  right: -30px;
+}
+
+/* Add or update these styles */
+:deep(.codex-editor) {
+  padding: 1rem 0 !important;
+  border: none !important;
+}
+
+:deep(.ce-toolbar__content) {
+  max-width: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+:deep(.ce-block__content) {
+  max-width: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+:deep(.codex-editor__redactor) {
+  padding-bottom: 80px !important;
+  margin: 0 !important;
+}
+
+:deep(.ce-toolbar__plus) {
+  left: -30px !important;
+}
+
+:deep(.ce-toolbar__actions) {
+  right: -30px !important;
+}
+
+:deep(.ce-block) {
+  margin: 0 !important;
+  padding: 0.5rem 0 !important;
+}
+
+:deep(.ce-paragraph) {
+  padding: 0 !important;
+  line-height: 1.6 !important;
+}
+
+:deep(.ce-toolbar__settings-btn) {
+  width: 24px !important;
+  height: 24px !important;
+}
+
+:deep(.ce-inline-toolbar) {
+  border-radius: 6px !important;
+}
+
+:deep(.ce-conversion-toolbar) {
+  border-radius: 6px !important;
 }
 </style>
 
