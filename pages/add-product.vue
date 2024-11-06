@@ -67,6 +67,18 @@ interface SelectProps {
 interface GeneratedSku {
   sku: string
   combination: string[]
+  stock: number
+}
+
+// Add these interfaces
+interface SkuDetails {
+  upc: string
+  images: string[]
+  collection: string
+  cost: number
+  price: number
+  max: number
+  stock: number
 }
 
 const goBack = () => {
@@ -213,7 +225,8 @@ const generatedSkus = computed(() => {
       combination: combination.map(pair => {
         const [attr, value] = pair.split(':')
         return `${attr}: ${value}`
-      })
+      }),
+      stock: 0
     }
   })
 })
@@ -429,6 +442,89 @@ const openDescriptionEditor = () => {
   nextTick(() => {
     initEditor()
   })
+}
+
+// Add these refs
+const showSkuSheet = ref(false)
+const selectedSku = ref<GeneratedSku | null>(null)
+const skuDetails = ref<{ [key: string]: SkuDetails }>({})
+const skuFileInput = ref<HTMLInputElement | null>(null)
+
+// Add these methods
+const handleSkuImageUpload = (event: Event, sku: string) => {
+  const input = event.target as HTMLInputElement
+  if (input.files && input.files[0]) {
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      if (e.target?.result) {
+        if (!skuDetails.value[sku]) {
+          skuDetails.value[sku] = {
+            upc: '',
+            images: [],
+            collection: '',
+            cost: 0,
+            price: 0,
+            max: 0,
+            stock: 0
+          }
+        }
+        skuDetails.value[sku].images.push(e.target.result as string)
+      }
+    }
+    reader.readAsDataURL(input.files[0])
+  }
+}
+
+const openSkuDetails = (sku: GeneratedSku) => {
+  selectedSku.value = sku
+  if (!skuDetails.value[sku.sku]) {
+    skuDetails.value[sku.sku] = {
+      upc: '',
+      images: [],
+      collection: '',
+      cost: 0,
+      price: 0,
+      max: 0,
+      stock: 0
+    }
+  }
+  showSkuSheet.value = true
+}
+
+const triggerSkuFileInput = () => {
+  skuFileInput.value?.click()
+}
+
+// Add this method to handle number input changes
+const handleSkuNumberInput = (sku: string, field: keyof SkuDetails, value: string) => {
+  if (!skuDetails.value[sku]) {
+    skuDetails.value[sku] = {
+      upc: '',
+      images: [],
+      collection: '',
+      cost: 0,
+      price: 0,
+      max: 0,
+      stock: 0
+    }
+  }
+  skuDetails.value[sku][field] = Number(value)
+}
+
+// Add this method to handle string input changes
+const handleSkuStringInput = (sku: string, field: keyof SkuDetails, value: string) => {
+  if (!skuDetails.value[sku]) {
+    skuDetails.value[sku] = {
+      upc: '',
+      images: [],
+      collection: '',
+      cost: 0,
+      price: 0,
+      max: 0,
+      stock: 0
+    }
+  }
+  skuDetails.value[sku][field] = value
 }
 </script>
 
@@ -765,15 +861,8 @@ const openDescriptionEditor = () => {
           </div>
         </div>
 
-        <!-- Replace the existing SKU table with this updated version -->
-        <!-- Generated SKUs Table -->
+        <!-- Replace the existing SKU table with this -->
         <div class="border-t">
-          <div class="bg-gray-50 p-3">
-            <div class="font-medium text-sm text-muted-foreground">
-              Generated SKUs
-            </div>
-          </div>
-
           <div>
             <template v-if="generatedSkus.length">
               <div 
@@ -781,12 +870,27 @@ const openDescriptionEditor = () => {
                 :key="index"
                 class="border-t first:border-t-0"
               >
-                <div class="p-3 hover:bg-gray-50/50">
-                  <div class="text-sm font-medium">
-                    {{ item.sku }}
+                <div 
+                  class="p-3 hover:bg-gray-50/50 cursor-pointer grid grid-cols-[1fr,100px]"
+                  @click="openSkuDetails(item)"
+                >
+                  <div>
+                    <div class="text-sm font-medium">
+                      {{ item.sku }}
+                    </div>
+                    <div class="mt-1 text-xs text-gray-500">
+                      {{ category }} {{ item.combination.map(pair => pair.split(': ')[1]).join(' ') }}
+                    </div>
                   </div>
-                  <div class="mt-1 text-xs text-gray-500">
-                    {{ item.combination.join(' / ') }}
+                  <div class="flex items-center">
+                    <Input
+                      v-model="item.stock"
+                      type="number"
+                      min="0"
+                      class="w-full h-8 text-sm"
+                      placeholder="0"
+                      @click.stop
+                    />
                   </div>
                 </div>
               </div>
@@ -833,6 +937,151 @@ const openDescriptionEditor = () => {
             >
               Save
             </Button>
+          </div>
+        </div>
+      </SheetContent>
+    </Sheet>
+
+    <Sheet v-model:open="showSkuSheet">
+      <SheetContent side="bottom" class="h-[80vh]">
+        <SheetHeader>
+          <SheetTitle>SKU Details</SheetTitle>
+          <SheetDescription>
+            {{ selectedSku?.sku }}
+          </SheetDescription>
+        </SheetHeader>
+
+        <div class="mt-6">
+          <!-- Table3 -->
+          <div class="border rounded-lg overflow-hidden">
+            <!-- UPC Row -->
+            <div class="flex items-center border-b hover:bg-gray-50">
+              <div class="w-32 border-r p-3">
+                <div class="text-sm font-medium">UPC</div>
+              </div>
+              <div class="flex-1 p-2">
+                <Input
+                  :value="skuDetails[selectedSku?.sku || '']?.upc"
+                  class="w-full"
+                  placeholder="Enter UPC"
+                  @input="(e) => handleSkuStringInput(selectedSku?.sku || '', 'upc', (e.target as HTMLInputElement).value)"
+                />
+              </div>
+            </div>
+
+            <!-- Images Row -->
+            <div class="flex items-center border-b hover:bg-gray-50">
+              <div class="w-32 border-r p-3">
+                <div class="text-sm font-medium">Images</div>
+              </div>
+              <div class="flex-1 p-2">
+                <div class="flex items-center gap-2 overflow-x-auto">
+                  <div 
+                    v-for="(image, index) in skuDetails[selectedSku?.sku || '']?.images" 
+                    :key="index"
+                    class="flex-shrink-0 w-12 h-12 rounded border overflow-hidden"
+                  >
+                    <img 
+                      :src="image" 
+                      class="w-full h-full object-cover"
+                      alt="SKU image"
+                    />
+                  </div>
+                  <button 
+                    @click="triggerSkuFileInput"
+                    class="flex-shrink-0 w-12 h-12 rounded border border-dashed border-gray-300 flex items-center justify-center hover:bg-gray-50"
+                  >
+                    <Plus class="w-4 h-4 text-gray-400" />
+                  </button>
+                </div>
+                <input
+                  ref="skuFileInput"
+                  type="file"
+                  accept="image/*"
+                  class="hidden"
+                  @change="(e) => handleSkuImageUpload(e, selectedSku?.sku || '')"
+                />
+              </div>
+            </div>
+
+            <!-- Collection Row -->
+            <div class="flex items-center border-b hover:bg-gray-50">
+              <div class="w-32 border-r p-3">
+                <div class="text-sm font-medium">Collection</div>
+              </div>
+              <div class="flex-1 p-2">
+                <Input
+                  :value="skuDetails[selectedSku?.sku || '']?.collection"
+                  class="w-full"
+                  placeholder="Enter collection"
+                  @input="(e) => handleSkuStringInput(selectedSku?.sku || '', 'collection', (e.target as HTMLInputElement).value)"
+                />
+              </div>
+            </div>
+
+            <!-- Cost Row -->
+            <div class="flex items-center border-b hover:bg-gray-50">
+              <div class="w-32 border-r p-3">
+                <div class="text-sm font-medium">Cost</div>
+              </div>
+              <div class="flex-1 p-2">
+                <Input
+                  :value="skuDetails[selectedSku?.sku || '']?.cost"
+                  type="number"
+                  class="w-full"
+                  placeholder="0.00"
+                  @input="(e) => handleSkuNumberInput(selectedSku?.sku || '', 'cost', (e.target as HTMLInputElement).value)"
+                />
+              </div>
+            </div>
+
+            <!-- Price Row -->
+            <div class="flex items-center border-b hover:bg-gray-50">
+              <div class="w-32 border-r p-3">
+                <div class="text-sm font-medium">Price</div>
+              </div>
+              <div class="flex-1 p-2">
+                <Input
+                  :value="skuDetails[selectedSku?.sku || '']?.price"
+                  type="number"
+                  class="w-full"
+                  placeholder="0.00"
+                  @input="(e) => handleSkuNumberInput(selectedSku?.sku || '', 'price', (e.target as HTMLInputElement).value)"
+                />
+              </div>
+            </div>
+
+            <!-- Max Row -->
+            <div class="flex items-center border-b hover:bg-gray-50">
+              <div class="w-32 border-r p-3">
+                <div class="text-sm font-medium">Max</div>
+              </div>
+              <div class="flex-1 p-2">
+                <Input
+                  :value="skuDetails[selectedSku?.sku || '']?.max"
+                  type="number"
+                  class="w-full"
+                  placeholder="0"
+                  @input="(e) => handleSkuNumberInput(selectedSku?.sku || '', 'max', (e.target as HTMLInputElement).value)"
+                />
+              </div>
+            </div>
+
+            <!-- Stock Row -->
+            <div class="flex items-center border-b hover:bg-gray-50">
+              <div class="w-32 border-r p-3">
+                <div class="text-sm font-medium">Stock</div>
+              </div>
+              <div class="flex-1 p-2">
+                <Input
+                  :value="skuDetails[selectedSku?.sku || '']?.stock"
+                  type="number"
+                  class="w-full"
+                  placeholder="0"
+                  @input="(e) => handleSkuNumberInput(selectedSku?.sku || '', 'stock', (e.target as HTMLInputElement).value)"
+                />
+              </div>
+            </div>
           </div>
         </div>
       </SheetContent>

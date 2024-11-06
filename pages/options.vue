@@ -47,13 +47,14 @@ interface OptionValue {
   value: string
   visual: string
   type: string
+  identifier: string
 }
 
 const menuSearchQuery = ref('')
 const optionSearchQuery = ref('')
 const selectedAttribute = ref('color')
 const editingId = ref<number | null>(null)
-const editingCell = ref<'visual' | 'value' | null>(null)
+const editingCell = ref<'visual' | 'value' | 'identifier' | null>(null)
 const tempEditValue = ref('')
 const showColorPicker = ref(false)
 const selectedOption = ref<OptionValue | null>(null)
@@ -73,12 +74,12 @@ const attributeOptions = ref<AttributeOption[]>([
 
 // Sample option values
 const optionValues = ref<OptionValue[]>([
-  { id: 1, attribute: 'color', value: 'Red', visual: '#FF0000', type: 'color' },
-  { id: 2, attribute: 'color', value: 'Blue', visual: '#0000FF', type: 'color' },
-  { id: 3, attribute: 'size', value: 'Small', visual: 'S', type: 'text' },
-  { id: 4, attribute: 'size', value: 'Medium', visual: 'M', type: 'text' },
-  { id: 5, attribute: 'material', value: 'Cotton', visual: '🧵', type: 'text' },
-  { id: 6, attribute: 'material', value: 'Leather', visual: '🥬', type: 'text' },
+  { id: 1, attribute: 'color', value: 'Red', visual: '#FF0000', type: 'color', identifier: 'red' },
+  { id: 2, attribute: 'color', value: 'Blue', visual: '#0000FF', type: 'color', identifier: 'blue' },
+  { id: 3, attribute: 'size', value: 'Small', visual: 'S', type: 'text', identifier: 'small' },
+  { id: 4, attribute: 'size', value: 'Medium', visual: 'M', type: 'text', identifier: 'medium' },
+  { id: 5, attribute: 'material', value: 'Cotton', visual: '🧵', type: 'text', identifier: 'cotton' },
+  { id: 6, attribute: 'material', value: 'Leather', visual: '🥬', type: 'text', identifier: 'leather' },
 ])
 
 const filteredValues = computed(() => {
@@ -110,7 +111,8 @@ const addNewRow = () => {
     attribute: selectedAttribute.value,
     value: '',
     visual: attribute?.type === 'color' ? '#CCCCCC' : '',
-    type: attribute?.type || 'text'
+    type: attribute?.type || 'text',
+    identifier: ''
   }
   optionValues.value.push(newOption)
 }
@@ -136,10 +138,10 @@ const saveColor = () => {
   selectedOption.value = null
 }
 
-const startEditing = (option: any, cell: 'visual' | 'value') => {
+const startEditing = (option: any, cell: 'visual' | 'value' | 'identifier') => {
   editingId.value = option.id
   editingCell.value = cell
-  tempEditValue.value = cell === 'value' ? option.value : option.visual
+  tempEditValue.value = cell === 'value' ? option.value : cell === 'identifier' ? option.identifier : option.visual
 }
 
 const saveEdit = (option: any) => {
@@ -148,6 +150,8 @@ const saveEdit = (option: any) => {
     if (updatedOption) {
       if (editingCell.value === 'value') {
         updatedOption.value = tempEditValue.value
+      } else if (editingCell.value === 'identifier') {
+        updatedOption.identifier = tempEditValue.value
       } else {
         updatedOption.visual = tempEditValue.value
       }
@@ -343,13 +347,16 @@ watch(optionValues, async (newValue) => {
 
         <!-- Options table -->
         <div class="border rounded-lg overflow-hidden">
-          <div class="grid grid-cols-[80px_1fr] bg-white">
+          <div class="grid grid-cols-[80px_1fr_1fr] bg-white">
             <!-- Table headers -->
             <div class="p-3 font-medium text-sm text-muted-foreground border-b">
               Visual
             </div>
             <div class="p-3 font-medium text-sm text-muted-foreground border-b">
               Value
+            </div>
+            <div class="p-3 font-medium text-sm text-muted-foreground border-b">
+              Identifier
             </div>
 
             <!-- Table rows -->
@@ -402,6 +409,25 @@ watch(optionValues, async (newValue) => {
                 </template>
                 <span v-else class="text-[14px]" :class="{ 'text-gray-400': !option.value }">
                   {{ option.value || 'Value' }}
+                </span>
+              </div>
+
+              <!-- Identifier cell -->
+              <div class="p-3 hover:bg-gray-50/50 transition-colors cursor-text"
+                   @click="startEditing(option, 'identifier')">
+                <template v-if="editingId === option.id && editingCell === 'identifier'">
+                  <input
+                    type="text"
+                    v-model="tempEditValue"
+                    class="w-full outline-none border-none bg-transparent"
+                    @blur="saveEdit(option)"
+                    @keydown="handleKeyDown($event, option)"
+                    ref="editInput"
+                    autofocus
+                  />
+                </template>
+                <span v-else class="text-[14px]" :class="{ 'text-gray-400': !option.identifier }">
+                  {{ option.identifier || 'Identifier' }}
                 </span>
               </div>
             </template>
