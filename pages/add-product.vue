@@ -70,17 +70,6 @@ interface GeneratedSku {
   stock: number
 }
 
-// Add these interfaces
-interface SkuDetails {
-  upc: string
-  images: string[]
-  collection: string
-  cost: number
-  price: number
-  max: number
-  stock: number
-}
-
 // Add new interface for stock details
 interface StockDetails {
   rows: StockRow[]
@@ -460,88 +449,6 @@ const openDescriptionEditor = () => {
 // Add these refs
 const showSkuSheet = ref(false)
 const selectedSku = ref<GeneratedSku | null>(null)
-const skuDetails = ref<{ [key: string]: SkuDetails }>({})
-const skuFileInput = ref<HTMLInputElement | null>(null)
-
-// Add these methods
-const handleSkuImageUpload = (event: Event, sku: string) => {
-  const input = event.target as HTMLInputElement
-  if (input.files && input.files[0]) {
-    const reader = new FileReader()
-    reader.onload = (e) => {
-      if (e.target?.result) {
-        if (!skuDetails.value[sku]) {
-          skuDetails.value[sku] = {
-            upc: '',
-            images: [],
-            collection: '',
-            cost: 0,
-            price: 0,
-            max: 0,
-            stock: 0
-          }
-        }
-        skuDetails.value[sku].images.push(e.target.result as string)
-      }
-    }
-    reader.readAsDataURL(input.files[0])
-  }
-}
-
-const openSkuDetails = (sku: GeneratedSku) => {
-  selectedSku.value = sku
-  if (!skuDetails.value[sku.sku]) {
-    skuDetails.value[sku.sku] = {
-      upc: '',
-      images: [],
-      collection: '',
-      cost: 0,
-      price: 0,
-      max: 0,
-      stock: 0
-    }
-  }
-  showSkuSheet.value = true
-}
-
-const triggerSkuFileInput = () => {
-  skuFileInput.value?.click()
-}
-
-// Add this method to handle number input changes
-const handleSkuNumberInput = (sku: string, field: keyof SkuDetails, value: string) => {
-  if (!skuDetails.value[sku]) {
-    skuDetails.value[sku] = {
-      upc: '',
-      images: [],
-      collection: '',
-      cost: 0,
-      price: 0,
-      max: 0,
-      stock: 0
-    }
-  }
-  skuDetails.value[sku][field] = Number(value)
-}
-
-// Add this method to handle string input changes
-const handleSkuStringInput = (sku: string, field: keyof SkuDetails, value: string) => {
-  if (!skuDetails.value[sku]) {
-    skuDetails.value[sku] = {
-      upc: '',
-      images: [],
-      collection: '',
-      cost: 0,
-      price: 0,
-      max: 0,
-      stock: 0
-    }
-  }
-  skuDetails.value[sku][field] = value
-}
-
-// Add these refs
-const showStockSheet = ref(false)
 const stockDetails = ref<{ [key: string]: StockDetails }>({})
 
 // Add this method
@@ -556,20 +463,24 @@ const openStockDetails = (sku: string) => {
       }]
     }
   }
-  showStockSheet.value = true
+  showSkuSheet.value = true
 }
 
 // Add method to handle adding new rows
 const addStockRow = (sku: string) => {
-  if (stockDetails.value[sku]) {
-    const nextGroup = getNextGroupNumber(stockDetails.value[sku].rows)
-    stockDetails.value[sku].rows.push({
-      group: nextGroup,
-      stock: 0,
-      dom: '',
-      shelfLife: ''
-    })
+  if (!stockDetails.value[sku]) {
+    stockDetails.value[sku] = {
+      rows: []
+    }
   }
+  
+  const nextGroup = getNextGroupNumber(stockDetails.value[sku].rows)
+  stockDetails.value[sku].rows.push({
+    group: nextGroup,
+    stock: 0,
+    dom: '',
+    shelfLife: ''
+  })
 }
 
 // Add this to handle auto-numbering for groups
@@ -581,7 +492,79 @@ const getNextGroupNumber = (rows: StockRow[]): string => {
 // Add method to handle updates
 const handleStockUpdate = () => {
   // Add your update logic here
-  showStockSheet.value = false
+  showSkuSheet.value = false
+}
+
+const openSkuDetails = (sku: GeneratedSku) => {
+  selectedSku.value = sku
+  showStockSheet.value = true
+}
+
+// Add these refs
+const showSkuDetailsSheet = ref(false)
+const selectedSkuDetails = ref<GeneratedSku | null>(null)
+
+// Add this method to handle SKU cell tap
+const openSkuDetailsSheet = (sku: GeneratedSku) => {
+  selectedSkuDetails.value = sku
+  // Initialize stock details if not exists
+  if (!stockDetails.value[sku.sku]) {
+    stockDetails.value[sku.sku] = {
+      rows: [{
+        group: '001',
+        stock: 0,
+        dom: '',
+        shelfLife: ''
+      }]
+    }
+  }
+  showSkuDetailsSheet.value = true
+}
+
+// Add this computed property
+const totalStock = computed(() => {
+  const sku = selectedSkuDetails.value?.sku || ''
+  return stockDetails.value[sku]?.rows.reduce((total, row) => total + (row.stock || 0), 0) || 0
+})
+
+// Add these refs and methods for SKU media handling
+const skuPrimaryImage = ref<string>('')
+const skuAdditionalImages = ref<string[]>([])
+const skuPrimaryFileInput = ref<HTMLInputElement | null>(null)
+const skuAdditionalFileInput = ref<HTMLInputElement | null>(null)
+
+const handleSkuPrimaryImageUpload = (event: Event) => {
+  const input = event.target as HTMLInputElement
+  if (input.files && input.files[0]) {
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      if (e.target?.result) {
+        skuPrimaryImage.value = e.target.result as string
+      }
+    }
+    reader.readAsDataURL(input.files[0])
+  }
+}
+
+const handleSkuAdditionalImageUpload = (event: Event) => {
+  const input = event.target as HTMLInputElement
+  if (input.files && input.files[0]) {
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      if (e.target?.result) {
+        skuAdditionalImages.value.push(e.target.result as string)
+      }
+    }
+    reader.readAsDataURL(input.files[0])
+  }
+}
+
+const triggerSkuPrimaryFileInput = () => {
+  skuPrimaryFileInput.value?.click()
+}
+
+const triggerSkuAdditionalFileInput = () => {
+  skuAdditionalFileInput.value?.click()
 }
 </script>
 
@@ -927,11 +910,12 @@ const handleStockUpdate = () => {
                 :key="index"
                 class="border-t first:border-t-0"
               >
-                <div 
-                  class="p-3 hover:bg-gray-50/50 cursor-pointer grid grid-cols-[1fr,100px]"
-                  @click="openSkuDetails(item)"
-                >
-                  <div>
+                <div class="grid grid-cols-[1fr,100px]">
+                  <!-- Cell 1 - SKU Details (Clickable) -->
+                  <div 
+                    class="p-3 hover:bg-gray-50/50 cursor-pointer"
+                    @click="openSkuDetailsSheet(item)"
+                  >
                     <div class="text-sm font-medium">
                       {{ item.sku }}
                     </div>
@@ -939,7 +923,9 @@ const handleStockUpdate = () => {
                       {{ category }} {{ item.combination.map(pair => pair.split(': ')[1]).join(' ') }}
                     </div>
                   </div>
-                  <div class="flex items-center">
+                  
+                  <!-- Cell 2 - Stock Input -->
+                  <div class="flex items-center border-l">
                     <Input
                       v-model="item.stock"
                       type="number"
@@ -1018,10 +1004,10 @@ const handleStockUpdate = () => {
               </div>
               <div class="flex-1 p-2">
                 <Input
-                  :value="skuDetails[selectedSku?.sku || '']?.upc"
+                  :value="currentSkuDetails.upc"
+                  @input="e => updateSkuField('upc', e.target.value)"
                   class="w-full py-3 px-4 bg-transparent border-0 focus:outline-none placeholder:text-gray-400 text-sm"
                   placeholder="Enter UPC"
-                  @input="(e) => handleSkuStringInput(selectedSku?.sku || '', 'upc', (e.target as HTMLInputElement).value)"
                 />
               </div>
             </div>
@@ -1068,10 +1054,10 @@ const handleStockUpdate = () => {
               </div>
               <div class="flex-1 p-2">
                 <Input
-                  :value="skuDetails[selectedSku?.sku || '']?.collection"
+                  :value="currentSkuDetails.collection"
+                  @input="e => updateSkuField('collection', e.target.value)"
                   class="w-full py-3 px-4 bg-transparent border-0 focus:outline-none placeholder:text-gray-400 text-sm"
                   placeholder="Enter collection"
-                  @input="(e) => handleSkuStringInput(selectedSku?.sku || '', 'collection', (e.target as HTMLInputElement).value)"
                 />
               </div>
             </div>
@@ -1083,11 +1069,11 @@ const handleStockUpdate = () => {
               </div>
               <div class="flex-1 p-2">
                 <Input
-                  :value="skuDetails[selectedSku?.sku || '']?.cost"
+                  :value="currentSkuDetails.cost"
+                  @input="e => updateSkuField('cost', Number(e.target.value))"
                   type="number"
                   class="w-full py-3 px-4 bg-transparent border-0 focus:outline-none placeholder:text-gray-400 text-sm"
                   placeholder="0.00"
-                  @input="(e) => handleSkuNumberInput(selectedSku?.sku || '', 'cost', (e.target as HTMLInputElement).value)"
                 />
               </div>
             </div>
@@ -1099,11 +1085,11 @@ const handleStockUpdate = () => {
               </div>
               <div class="flex-1 p-2">
                 <Input
-                  :value="skuDetails[selectedSku?.sku || '']?.price"
+                  :value="currentSkuDetails.price"
+                  @input="e => updateSkuField('price', Number(e.target.value))"
                   type="number"
                   class="w-full py-3 px-4 bg-transparent border-0 focus:outline-none placeholder:text-gray-400 text-sm"
                   placeholder="0.00"
-                  @input="(e) => handleSkuNumberInput(selectedSku?.sku || '', 'price', (e.target as HTMLInputElement).value)"
                 />
               </div>
             </div>
@@ -1115,11 +1101,11 @@ const handleStockUpdate = () => {
               </div>
               <div class="flex-1 p-2">
                 <Input
-                  :value="skuDetails[selectedSku?.sku || '']?.max"
+                  :value="currentSkuDetails.max"
+                  @input="e => updateSkuField('max', Number(e.target.value))"
                   type="number"
                   class="w-full py-3 px-4 bg-transparent border-0 focus:outline-none placeholder:text-gray-400 text-sm"
                   placeholder="0"
-                  @input="(e) => handleSkuNumberInput(selectedSku?.sku || '', 'max', (e.target as HTMLInputElement).value)"
                 />
               </div>
             </div>
@@ -1131,11 +1117,11 @@ const handleStockUpdate = () => {
               </div>
               <div class="flex-1 p-2 flex items-center">
                 <Input
-                  :value="skuDetails[selectedSku?.sku || '']?.stock"
+                  :value="currentSkuDetails.stock"
+                  @input="e => updateSkuField('stock', Number(e.target.value))"
                   type="number"
                   class="w-full py-3 px-4 bg-transparent border-0 focus:outline-none placeholder:text-gray-400 text-sm"
                   placeholder="0"
-                  @input="(e) => handleSkuNumberInput(selectedSku?.sku || '', 'stock', (e.target as HTMLInputElement).value)"
                 />
                 <button 
                   @click.stop="openStockDetails(selectedSku?.sku || '')"
@@ -1232,6 +1218,165 @@ const handleStockUpdate = () => {
                 />
               </div>
             </div>
+          </div>
+        </div>
+      </SheetContent>
+    </Sheet>
+
+    <!-- Replace the existing SKU details sheet content -->
+    <Sheet v-model:open="showSkuDetailsSheet">
+      <SheetContent side="bottom" class="h-[100dvh] w-full">
+        <div class="flex flex-col h-full">
+          <!-- Header -->
+          <div class="p-4 border-b">
+            <h2 class="text-lg font-semibold">{{ selectedSkuDetails?.sku }}</h2>
+            <p class="text-sm text-gray-500 mt-1">
+              {{ category }} {{ selectedSkuDetails?.combination.map(pair => pair.split(': ')[1]).join(' ') }}
+            </p>
+          </div>
+
+          <!-- Scrollable Content -->
+          <div class="flex-1 overflow-y-auto p-4 space-y-6">
+            <!-- Basic Info Table -->
+            <div class="rounded-lg border bg-white overflow-hidden">
+              <!-- UPC Row -->
+              <div class="flex items-center border-b">
+                <div class="w-24 p-3 border-r bg-gray-50">
+                  <span class="text-sm font-medium">UPC</span>
+                </div>
+                <div class="flex-1 p-2">
+                  <Input
+                    type="text"
+                    placeholder="Enter UPC"
+                    class="w-full border-0 shadow-none focus:ring-0"
+                  />
+                </div>
+              </div>
+
+              <!-- Collection Row -->
+              <div class="flex items-center border-b">
+                <div class="w-24 p-3 border-r bg-gray-50">
+                  <span class="text-sm font-medium">Collection</span>
+                </div>
+                <div class="flex-1 p-2">
+                  <Input
+                    type="text"
+                    placeholder="Enter collection"
+                    class="w-full border-0 shadow-none focus:ring-0"
+                  />
+                </div>
+              </div>
+
+              <!-- Cost Row -->
+              <div class="flex items-center border-b">
+                <div class="w-24 p-3 border-r bg-gray-50">
+                  <span class="text-sm font-medium">Cost</span>
+                </div>
+                <div class="flex-1 p-2">
+                  <Input
+                    type="number"
+                    placeholder="0.00"
+                    class="w-full border-0 shadow-none focus:ring-0"
+                  />
+                </div>
+              </div>
+
+              <!-- Price Row -->
+              <div class="flex items-center border-b">
+                <div class="w-24 p-3 border-r bg-gray-50">
+                  <span class="text-sm font-medium">Price</span>
+                </div>
+                <div class="flex-1 p-2">
+                  <Input
+                    type="number"
+                    placeholder="0.00"
+                    class="w-full border-0 shadow-none focus:ring-0"
+                  />
+                </div>
+              </div>
+
+              <!-- MRP Row -->
+              <div class="flex items-center border-b">
+                <div class="w-24 p-3 border-r bg-gray-50">
+                  <span class="text-sm font-medium">MRP</span>
+                </div>
+                <div class="flex-1 p-2">
+                  <Input
+                    type="number"
+                    placeholder="0.00"
+                    class="w-full border-0 shadow-none focus:ring-0"
+                  />
+                </div>
+              </div>
+
+              <!-- Stock Row -->
+              <div class="flex items-center">
+                <div class="w-24 p-3 border-r bg-gray-50">
+                  <span class="text-sm font-medium">Stock</span>
+                </div>
+                <div class="flex-1 p-2">
+                  <span class="text-sm">{{ totalStock }}</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Stock Management Table -->
+            <div class="space-y-4">
+              <div class="flex items-center justify-between">
+                <h3 class="text-sm font-medium text-gray-900">Stock Management</h3>
+                <Button 
+                  variant="ghost" 
+                  size="icon"
+                  class="h-8 w-8 p-0"
+                  @click="addStockRow(selectedSkuDetails?.sku || '')"
+                >
+                  <Plus class="h-4 w-4" />
+                </Button>
+              </div>
+              
+              <div class="rounded-lg border bg-white overflow-hidden">
+                <!-- Header Row -->
+                <div class="grid grid-cols-4 text-sm border-b bg-gray-50">
+                  <div class="p-3 font-medium border-r">Group</div>
+                  <div class="p-3 font-medium border-r">Stock</div>
+                  <div class="p-3 font-medium border-r">DOM</div>
+                  <div class="p-3 font-medium">Shelf Life</div>
+                </div>
+
+                <!-- Single Default Row -->
+                <div class="grid grid-cols-4">
+                  <div class="p-3 border-r">
+                    <span class="text-sm">001</span>
+                  </div>
+                  <div class="p-3 border-r">
+                    <Input
+                      type="number"
+                      placeholder="0"
+                      class="w-full border-0 shadow-none focus:ring-0"
+                    />
+                  </div>
+                  <div class="p-3 border-r">
+                    <Input
+                      type="text"
+                      placeholder="mm/dd"
+                      class="w-full border-0 shadow-none focus:ring-0"
+                    />
+                  </div>
+                  <div class="p-3">
+                    <Input
+                      type="text"
+                      placeholder="Enter"
+                      class="w-full border-0 shadow-none focus:ring-0"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Fixed Bottom Bar -->
+          <div class="p-4 bg-white border-t">
+            <Button class="w-full">Save Changes</Button>
           </div>
         </div>
       </SheetContent>
