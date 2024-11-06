@@ -485,8 +485,8 @@ const addStockRow = (sku: string) => {
 
 // Add this to handle auto-numbering for groups
 const getNextGroupNumber = (rows: StockRow[]): string => {
-  const num = rows.length + 1
-  return num.toString().padStart(3, '0')
+  const num = (rows.length + 1).toString().padStart(3, '0')
+  return num
 }
 
 // Add method to handle updates
@@ -1253,6 +1253,65 @@ const triggerSkuAdditionalFileInput = () => {
                 </div>
               </div>
 
+              <!-- Media Upload Row -->
+              <div class="flex items-center border-b">
+                <div class="w-24 p-3 border-r bg-gray-50">
+                  <button 
+                    @click="triggerSkuPrimaryFileInput"
+                    class="w-12 h-12 rounded border flex items-center justify-center hover:bg-gray-50 relative overflow-hidden"
+                    :class="{ 'border-dashed border-gray-300': !skuPrimaryImage }"
+                  >
+                    <template v-if="skuPrimaryImage">
+                      <img 
+                        :src="skuPrimaryImage" 
+                        class="w-full h-full object-cover"
+                        alt="Primary SKU image"
+                      />
+                    </template>
+                    <ImageIcon v-else class="w-4 h-4 text-gray-400" />
+                  </button>
+                  <input
+                    ref="skuPrimaryFileInput"
+                    type="file"
+                    accept="image/*"
+                    class="hidden"
+                    @change="handleSkuPrimaryImageUpload"
+                  />
+                </div>
+                
+                <div class="flex-1 p-2">
+                  <div class="flex items-center gap-2 overflow-x-auto">
+                    <!-- Uploaded Images -->
+                    <div 
+                      v-for="(image, index) in skuAdditionalImages" 
+                      :key="index"
+                      class="flex-shrink-0 w-12 h-12 rounded border overflow-hidden"
+                    >
+                      <img 
+                        :src="image" 
+                        class="w-full h-full object-cover"
+                        alt="Additional SKU image"
+                      />
+                    </div>
+                    
+                    <!-- Add Image Button -->
+                    <button 
+                      @click="triggerSkuAdditionalFileInput"
+                      class="flex-shrink-0 w-12 h-12 rounded border border-dashed border-gray-300 flex items-center justify-center hover:bg-gray-50"
+                    >
+                      <Plus class="w-4 h-4 text-gray-400" />
+                    </button>
+                  </div>
+                  <input
+                    ref="skuAdditionalFileInput"
+                    type="file"
+                    accept="image/*"
+                    class="hidden"
+                    @change="handleSkuAdditionalImageUpload"
+                  />
+                </div>
+              </div>
+
               <!-- Collection Row -->
               <div class="flex items-center border-b">
                 <div class="w-24 p-3 border-r bg-gray-50">
@@ -1343,30 +1402,34 @@ const triggerSkuAdditionalFileInput = () => {
                   <div class="p-3 font-medium">Shelf Life</div>
                 </div>
 
-                <!-- Single Default Row -->
-                <div class="grid grid-cols-4">
+                <!-- Data Rows -->
+                <div 
+                  v-for="(row, index) in stockDetails[selectedSkuDetails?.sku || '']?.rows" 
+                  :key="index"
+                  class="grid grid-cols-4 border-b last:border-b-0"
+                >
                   <div class="p-3 border-r">
-                    <span class="text-sm">001</span>
+                    <span class="text-sm">{{ row.group }}</span>
                   </div>
                   <div class="p-3 border-r">
                     <Input
+                      v-model.number="row.stock"
                       type="number"
-                      placeholder="0"
-                      class="w-full border-0 shadow-none focus:ring-0"
+                      class="w-full border-0 shadow-none focus:ring-0 p-0"
                     />
                   </div>
                   <div class="p-3 border-r">
                     <Input
+                      v-model="row.dom"
                       type="text"
-                      placeholder="mm/dd"
-                      class="w-full border-0 shadow-none focus:ring-0"
+                      class="w-full border-0 shadow-none focus:ring-0 p-0"
                     />
                   </div>
                   <div class="p-3">
                     <Input
+                      v-model="row.shelfLife"
                       type="text"
-                      placeholder="Enter"
-                      class="w-full border-0 shadow-none focus:ring-0"
+                      class="w-full border-0 shadow-none focus:ring-0 p-0"
                     />
                   </div>
                 </div>
