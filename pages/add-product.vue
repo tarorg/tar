@@ -81,6 +81,19 @@ interface SkuDetails {
   stock: number
 }
 
+// Add new interface for stock details
+interface StockDetails {
+  rows: StockRow[]
+}
+
+// Add this interface for a single stock row
+interface StockRow {
+  group: string
+  stock: number
+  dom: string
+  shelfLife: string
+}
+
 const goBack = () => {
   navigateTo('/products')
 }
@@ -526,6 +539,50 @@ const handleSkuStringInput = (sku: string, field: keyof SkuDetails, value: strin
   }
   skuDetails.value[sku][field] = value
 }
+
+// Add these refs
+const showStockSheet = ref(false)
+const stockDetails = ref<{ [key: string]: StockDetails }>({})
+
+// Add this method
+const openStockDetails = (sku: string) => {
+  if (!stockDetails.value[sku]) {
+    stockDetails.value[sku] = {
+      rows: [{
+        group: '001',
+        stock: 0,
+        dom: '',
+        shelfLife: ''
+      }]
+    }
+  }
+  showStockSheet.value = true
+}
+
+// Add method to handle adding new rows
+const addStockRow = (sku: string) => {
+  if (stockDetails.value[sku]) {
+    const nextGroup = getNextGroupNumber(stockDetails.value[sku].rows)
+    stockDetails.value[sku].rows.push({
+      group: nextGroup,
+      stock: 0,
+      dom: '',
+      shelfLife: ''
+    })
+  }
+}
+
+// Add this to handle auto-numbering for groups
+const getNextGroupNumber = (rows: StockRow[]): string => {
+  const num = rows.length + 1
+  return num.toString().padStart(3, '0')
+}
+
+// Add method to handle updates
+const handleStockUpdate = () => {
+  // Add your update logic here
+  showStockSheet.value = false
+}
 </script>
 
 <template>
@@ -887,7 +944,7 @@ const handleSkuStringInput = (sku: string, field: keyof SkuDetails, value: strin
                       v-model="item.stock"
                       type="number"
                       min="0"
-                      class="w-full h-8 text-sm"
+                      class="w-full py-3 px-4 bg-transparent border-0 focus:outline-none placeholder:text-gray-400 text-sm"
                       placeholder="0"
                       @click.stop
                     />
@@ -943,7 +1000,7 @@ const handleSkuStringInput = (sku: string, field: keyof SkuDetails, value: strin
     </Sheet>
 
     <Sheet v-model:open="showSkuSheet">
-      <SheetContent side="bottom" class="h-[80vh]">
+      <SheetContent side="bottom" class="h-screen">
         <SheetHeader>
           <SheetTitle>SKU Details</SheetTitle>
           <SheetDescription>
@@ -962,7 +1019,7 @@ const handleSkuStringInput = (sku: string, field: keyof SkuDetails, value: strin
               <div class="flex-1 p-2">
                 <Input
                   :value="skuDetails[selectedSku?.sku || '']?.upc"
-                  class="w-full"
+                  class="w-full py-3 px-4 bg-transparent border-0 focus:outline-none placeholder:text-gray-400 text-sm"
                   placeholder="Enter UPC"
                   @input="(e) => handleSkuStringInput(selectedSku?.sku || '', 'upc', (e.target as HTMLInputElement).value)"
                 />
@@ -1012,7 +1069,7 @@ const handleSkuStringInput = (sku: string, field: keyof SkuDetails, value: strin
               <div class="flex-1 p-2">
                 <Input
                   :value="skuDetails[selectedSku?.sku || '']?.collection"
-                  class="w-full"
+                  class="w-full py-3 px-4 bg-transparent border-0 focus:outline-none placeholder:text-gray-400 text-sm"
                   placeholder="Enter collection"
                   @input="(e) => handleSkuStringInput(selectedSku?.sku || '', 'collection', (e.target as HTMLInputElement).value)"
                 />
@@ -1028,7 +1085,7 @@ const handleSkuStringInput = (sku: string, field: keyof SkuDetails, value: strin
                 <Input
                   :value="skuDetails[selectedSku?.sku || '']?.cost"
                   type="number"
-                  class="w-full"
+                  class="w-full py-3 px-4 bg-transparent border-0 focus:outline-none placeholder:text-gray-400 text-sm"
                   placeholder="0.00"
                   @input="(e) => handleSkuNumberInput(selectedSku?.sku || '', 'cost', (e.target as HTMLInputElement).value)"
                 />
@@ -1044,7 +1101,7 @@ const handleSkuStringInput = (sku: string, field: keyof SkuDetails, value: strin
                 <Input
                   :value="skuDetails[selectedSku?.sku || '']?.price"
                   type="number"
-                  class="w-full"
+                  class="w-full py-3 px-4 bg-transparent border-0 focus:outline-none placeholder:text-gray-400 text-sm"
                   placeholder="0.00"
                   @input="(e) => handleSkuNumberInput(selectedSku?.sku || '', 'price', (e.target as HTMLInputElement).value)"
                 />
@@ -1060,7 +1117,7 @@ const handleSkuStringInput = (sku: string, field: keyof SkuDetails, value: strin
                 <Input
                   :value="skuDetails[selectedSku?.sku || '']?.max"
                   type="number"
-                  class="w-full"
+                  class="w-full py-3 px-4 bg-transparent border-0 focus:outline-none placeholder:text-gray-400 text-sm"
                   placeholder="0"
                   @input="(e) => handleSkuNumberInput(selectedSku?.sku || '', 'max', (e.target as HTMLInputElement).value)"
                 />
@@ -1072,13 +1129,106 @@ const handleSkuStringInput = (sku: string, field: keyof SkuDetails, value: strin
               <div class="w-32 border-r p-3">
                 <div class="text-sm font-medium">Stock</div>
               </div>
-              <div class="flex-1 p-2">
+              <div class="flex-1 p-2 flex items-center">
                 <Input
                   :value="skuDetails[selectedSku?.sku || '']?.stock"
                   type="number"
-                  class="w-full"
+                  class="w-full py-3 px-4 bg-transparent border-0 focus:outline-none placeholder:text-gray-400 text-sm"
                   placeholder="0"
                   @input="(e) => handleSkuNumberInput(selectedSku?.sku || '', 'stock', (e.target as HTMLInputElement).value)"
+                />
+                <button 
+                  @click.stop="openStockDetails(selectedSku?.sku || '')"
+                  class="px-3 py-2 hover:bg-gray-100 rounded-md"
+                >
+                  <ChevronRight class="h-4 w-4 text-gray-400" />
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </SheetContent>
+    </Sheet>
+
+    <!-- Update the Table4 Sheet -->
+    <Sheet v-model:open="showStockSheet">
+      <SheetContent side="bottom" class="h-screen">
+        <SheetHeader class="text-left">
+          <div class="flex items-center justify-between">
+            <SheetTitle>Stock Details</SheetTitle>
+            <div class="flex gap-2">
+              <Button 
+                variant="outline"
+                @click="addStockRow(selectedSku?.sku || '')"
+              >
+                <Plus class="h-4 w-4 mr-2" />
+                Add
+              </Button>
+              <Button 
+                @click="handleStockUpdate"
+              >
+                Update
+              </Button>
+            </div>
+          </div>
+          <SheetDescription>
+            {{ selectedSku?.sku }}
+          </SheetDescription>
+        </SheetHeader>
+
+        <div class="mt-6">
+          <!-- Table4 -->
+          <div class="border rounded-lg overflow-hidden">
+            <!-- Header Row -->
+            <div class="grid grid-cols-4 border-b bg-gray-50/50">
+              <div class="p-3 border-r">
+                <div class="text-sm font-medium">Group</div>
+              </div>
+              <div class="p-3 border-r">
+                <div class="text-sm font-medium">Stock</div>
+              </div>
+              <div class="p-3 border-r">
+                <div class="text-sm font-medium">DOM</div>
+              </div>
+              <div class="p-3">
+                <div class="text-sm font-medium">Shelf Life</div>
+              </div>
+            </div>
+
+            <!-- Data Rows -->
+            <div 
+              v-for="(row, index) in stockDetails[selectedSku?.sku || '']?.rows" 
+              :key="index"
+              class="grid grid-cols-4"
+            >
+              <div class="border-r">
+                <input
+                  :value="row.group"
+                  type="text"
+                  class="w-full py-3 px-4 bg-transparent border-0 focus:outline-none text-sm"
+                  readonly
+                />
+              </div>
+              <div class="border-r">
+                <input
+                  v-model.number="row.stock"
+                  type="number"
+                  class="w-full py-3 px-4 bg-transparent border-0 focus:outline-none text-sm"
+                />
+              </div>
+              <div class="border-r">
+                <input
+                  v-model="row.dom"
+                  type="text"
+                  class="w-full py-3 px-4 bg-transparent border-0 focus:outline-none text-sm"
+                  placeholder="mm/d"
+                />
+              </div>
+              <div>
+                <input
+                  v-model="row.shelfLife"
+                  type="text"
+                  class="w-full py-3 px-4 bg-transparent border-0 focus:outline-none text-sm"
                 />
               </div>
             </div>
@@ -1147,6 +1297,25 @@ const handleSkuStringInput = (sku: string, field: keyof SkuDetails, value: strin
 
 :deep(.codex-editor__redactor) {
   @apply pb-16;
+}
+
+/* Add these styles */
+:deep(input) {
+  background-color: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+:deep(input:focus) {
+  outline: none !important;
+  ring: none !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+/* Update existing hover style */
+.hover\:bg-gray-50:hover :deep(input) {
+  background-color: transparent !important;
 }
 </style>
 
