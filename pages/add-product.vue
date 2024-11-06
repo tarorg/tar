@@ -566,6 +566,61 @@ const triggerSkuPrimaryFileInput = () => {
 const triggerSkuAdditionalFileInput = () => {
   skuAdditionalFileInput.value?.click()
 }
+
+// Add Date Picker Sheet
+const showDatePickerSheet = ref(false)
+const selectedDate = ref('')
+const selectedRowIndex = ref<number | null>(null)
+
+// Add these methods
+const showDatePicker = (rowIndex: number) => {
+  selectedRowIndex.value = rowIndex
+  const currentRow = stockDetails.value[selectedSkuDetails.value?.sku || '']?.rows[rowIndex]
+  if (currentRow?.dom) {
+    selectedDate.value = currentRow.dom
+  } else {
+    selectedDate.value = new Date().toISOString().split('T')[0]
+  }
+  showDatePickerSheet.value = true
+}
+
+const handleDateSelect = (event: Event) => {
+  const input = event.target as HTMLInputElement
+  selectedDate.value = input.value
+}
+
+const confirmDateSelection = () => {
+  if (selectedRowIndex.value !== null && selectedSkuDetails.value) {
+    const sku = selectedSkuDetails.value.sku
+    stockDetails.value[sku].rows[selectedRowIndex.value].dom = selectedDate.value
+  }
+  showDatePickerSheet.value = false
+  selectedRowIndex.value = null
+}
+
+// Add these refs and methods
+const showStockManagementSheet = ref(false)
+const selectedSkuForStock = ref<GeneratedSku | null>(null)
+
+const openStockManagementSheet = (sku: GeneratedSku) => {
+  selectedSkuForStock.value = sku
+  // Initialize stock details if not exists
+  if (!stockDetails.value[sku.sku]) {
+    stockDetails.value[sku.sku] = {
+      rows: [{
+        group: '001',
+        stock: 0,
+        dom: '',
+        shelfLife: ''
+      }]
+    }
+  }
+  showStockManagementSheet.value = true
+}
+
+const getSkuTotalStock = (sku: string) => {
+  return stockDetails.value[sku]?.rows.reduce((total, row) => total + (row.stock || 0), 0) || 0
+}
 </script>
 
 <template>
@@ -925,15 +980,11 @@ const triggerSkuAdditionalFileInput = () => {
                   </div>
                   
                   <!-- Cell 2 - Stock Input -->
-                  <div class="flex items-center border-l">
-                    <Input
-                      v-model="item.stock"
-                      type="number"
-                      min="0"
-                      class="w-full py-3 px-4 bg-transparent border-0 focus:outline-none placeholder:text-gray-400 text-sm"
-                      placeholder="0"
-                      @click.stop
-                    />
+                  <div 
+                    class="flex items-center border-l p-3 cursor-pointer hover:bg-gray-50/50"
+                    @click="openStockManagementSheet(item)"
+                  >
+                    <span class="text-sm">{{ getSkuTotalStock(item.sku) }}</span>
                   </div>
                 </div>
               </div>
@@ -1355,7 +1406,7 @@ const triggerSkuAdditionalFileInput = () => {
               </div>
 
               <!-- MRP Row -->
-              <div class="flex items-center border-b">
+              <div class="flex items-center">
                 <div class="w-24 p-3 border-r bg-gray-50">
                   <span class="text-sm font-medium">MRP</span>
                 </div>
@@ -1367,19 +1418,50 @@ const triggerSkuAdditionalFileInput = () => {
                   />
                 </div>
               </div>
-
-              <!-- Stock Row -->
-              <div class="flex items-center">
-                <div class="w-24 p-3 border-r bg-gray-50">
-                  <span class="text-sm font-medium">Stock</span>
-                </div>
-                <div class="flex-1 p-2">
-                  <span class="text-sm">{{ totalStock }}</span>
-                </div>
-              </div>
             </div>
+          </div>
 
-            <!-- Stock Management Table -->
+          <!-- Fixed Bottom Bar -->
+          <div class="p-4 bg-white border-t">
+            <Button class="w-full">Save Changes</Button>
+          </div>
+        </div>
+      </SheetContent>
+    </Sheet>
+
+    <!-- Add Date Picker Sheet -->
+    <Sheet v-model:open="showDatePickerSheet">
+      <SheetContent side="bottom" class="h-[400px]">
+        <div class="p-4">
+          <input 
+            type="date" 
+            class="w-full p-4 text-lg rounded-lg border"
+            v-model="selectedDate"
+            @change="handleDateSelect"
+          />
+        </div>
+        <div class="p-4 bg-white border-t">
+          <Button class="w-full" @click="confirmDateSelection">
+            Confirm
+          </Button>
+        </div>
+      </SheetContent>
+    </Sheet>
+
+    <!-- Add this new sheet component -->
+    <Sheet v-model:open="showStockManagementSheet">
+      <SheetContent side="bottom" class="h-[100dvh] w-full">
+        <div class="flex flex-col h-full">
+          <!-- Header -->
+          <div class="p-4 border-b">
+            <h2 class="text-lg font-semibold">{{ selectedSkuForStock?.sku }}</h2>
+            <p class="text-sm text-gray-500 mt-1">
+              {{ category }} {{ selectedSkuForStock?.combination.map(pair => pair.split(': ')[1]).join(' ') }}
+            </p>
+          </div>
+
+          <!-- Stock Management Table -->
+          <div class="flex-1 overflow-y-auto p-4">
             <div class="space-y-4">
               <div class="flex items-center justify-between">
                 <h3 class="text-sm font-medium text-gray-900">Stock Management</h3>
@@ -1387,7 +1469,7 @@ const triggerSkuAdditionalFileInput = () => {
                   variant="ghost" 
                   size="icon"
                   class="h-8 w-8 p-0"
-                  @click="addStockRow(selectedSkuDetails?.sku || '')"
+                  @click="addStockRow(selectedSkuForStock?.sku || '')"
                 >
                   <Plus class="h-4 w-4" />
                 </Button>
@@ -1396,40 +1478,41 @@ const triggerSkuAdditionalFileInput = () => {
               <div class="rounded-lg border bg-white overflow-hidden">
                 <!-- Header Row -->
                 <div class="grid grid-cols-4 text-sm border-b bg-gray-50">
-                  <div class="p-3 font-medium border-r">Group</div>
-                  <div class="p-3 font-medium border-r">Stock</div>
-                  <div class="p-3 font-medium border-r">DOM</div>
-                  <div class="p-3 font-medium">Shelf Life</div>
+                  <div class="p-3 font-medium border-r text-center">Group</div>
+                  <div class="p-3 font-medium border-r text-center">Stock</div>
+                  <div class="p-3 font-medium border-r text-center">DOM</div>
+                  <div class="p-3 font-medium text-center">Shelf Life</div>
                 </div>
 
                 <!-- Data Rows -->
                 <div 
-                  v-for="(row, index) in stockDetails[selectedSkuDetails?.sku || '']?.rows" 
+                  v-for="(row, index) in stockDetails[selectedSkuForStock?.sku || '']?.rows" 
                   :key="index"
                   class="grid grid-cols-4 border-b last:border-b-0"
                 >
                   <div class="p-3 border-r">
-                    <span class="text-sm">{{ row.group }}</span>
+                    <span class="block text-sm text-center">{{ row.group }}</span>
                   </div>
                   <div class="p-3 border-r">
                     <Input
                       v-model.number="row.stock"
                       type="number"
-                      class="w-full border-0 shadow-none focus:ring-0 p-0"
+                      class="w-full border-0 shadow-none focus:ring-0 p-0 text-center"
                     />
                   </div>
                   <div class="p-3 border-r">
                     <Input
                       v-model="row.dom"
-                      type="text"
-                      class="w-full border-0 shadow-none focus:ring-0 p-0"
+                      type="date"
+                      class="w-full border-0 shadow-none focus:ring-0 p-0 text-center [&::-webkit-calendar-picker-indicator]:hidden"
+                      @click="showDatePicker(index)"
                     />
                   </div>
                   <div class="p-3">
                     <Input
                       v-model="row.shelfLife"
                       type="text"
-                      class="w-full border-0 shadow-none focus:ring-0 p-0"
+                      class="w-full border-0 shadow-none focus:ring-0 p-0 text-center"
                     />
                   </div>
                 </div>
@@ -1439,7 +1522,9 @@ const triggerSkuAdditionalFileInput = () => {
 
           <!-- Fixed Bottom Bar -->
           <div class="p-4 bg-white border-t">
-            <Button class="w-full">Save Changes</Button>
+            <Button class="w-full" @click="showStockManagementSheet = false">
+              Save Changes
+            </Button>
           </div>
         </div>
       </SheetContent>
