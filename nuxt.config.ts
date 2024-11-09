@@ -36,6 +36,10 @@ export default defineNuxtConfig({
     },
     tursoDbUrl: process.env.TURSO_DB_URL,
     tursoAuthToken: process.env.TURSO_AUTH_TOKEN,
+    public: {
+      nhostSubdomain: process.env.NHOST_SUBDOMAIN,
+      nhostRegion: process.env.NHOST_REGION,
+    }
   },
 
   compatibilityDate: '2024-10-19',
