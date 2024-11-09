@@ -37,9 +37,9 @@ import { NuxtLink } from '#components'
 const menuSearchQuery = ref('')
 
 const menuItems = [
-  { icon: User, label: 'Profile' },
-  { icon: CreditCard, label: 'Billing' },
-  { icon: Settings, label: 'Settings' },
+  { icon: User, label: 'Profile', link: '/profile' },
+  { icon: CreditCard, label: 'Billing', link: '/billing' },
+  { icon: Settings, label: 'Settings', link: '/settings' },
   { icon: LayoutDashboard, label: 'Home', link: '/' },
   { icon: ShoppingCart, label: 'Orders', link: '/orders' },
   { icon: Package, label: 'Products', link: '/products' },

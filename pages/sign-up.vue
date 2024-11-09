@@ -4,31 +4,53 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { ArrowLeft } from 'lucide-vue-next'
-import { navigateTo } from '#app'
 import { useNhost } from '~/plugins/nhost'
 import { useAuthError } from '~/composables/useAuthError'
-import { ref } from 'vue'
 
-const { signInWithEmail } = useNhost()
+const { signUpWithEmail } = useNhost()
 const { error, isLoading, handleAuthError, clearError, setLoading } = useAuthError()
 const router = useRouter()
 
 const email = ref('')
 const password = ref('')
+const confirmPassword = ref('')
+const displayName = ref('')
 
 const goBack = () => {
-  router.push('/')
+  router.push('/auth')
 }
 
 const handleSubmit = async () => {
   try {
+    // Basic validation
+    if (password.value !== confirmPassword.value) {
+      throw new Error('Passwords do not match')
+    }
+
+    if (password.value.length < 8) {
+      throw new Error('Password must be at least 8 characters long')
+    }
+
+    if (!displayName.value) {
+      throw new Error('Display name is required')
+    }
+
     setLoading(true)
     clearError()
     
-    const { session, error: authError } = await signInWithEmail(email.value, password.value)
+    const { session, error: signUpError } = await signUpWithEmail(
+      email.value, 
+      password.value,
+      {
+        displayName: displayName.value,
+        metadata: {
+          createdAt: new Date().toISOString()
+        }
+      }
+    )
     
-    if (authError) {
-      throw authError
+    if (signUpError) {
+      throw signUpError
     }
 
     if (session) {
@@ -40,29 +62,34 @@ const handleSubmit = async () => {
     setLoading(false)
   }
 }
-
-const goToSignUp = () => {
-  router.push('/sign-up')
-}
 </script>
 
 <template>
   <div class="min-h-screen p-4">
     <Button @click="goBack" variant="ghost" class="mb-4">
       <ArrowLeft class="mr-2 h-4 w-4" />
-      Back
+      Back to Login
     </Button>
     <Card class="mx-auto max-w-sm">
       <CardHeader>
-        <CardTitle class="text-2xl">
-          Login
-        </CardTitle>
+        <CardTitle class="text-2xl">Create Account</CardTitle>
         <CardDescription>
-          Sign in to your account
+          Sign up for a new account
         </CardDescription>
       </CardHeader>
       <CardContent>
         <form @submit.prevent="handleSubmit" class="grid gap-4">
+          <div class="grid gap-2">
+            <Label for="displayName">Display Name</Label>
+            <Input
+              id="displayName"
+              v-model="displayName"
+              type="text"
+              placeholder="John Doe"
+              required
+            />
+          </div>
+          
           <div class="grid gap-2">
             <Label for="email">Email</Label>
             <Input
@@ -73,18 +100,26 @@ const goToSignUp = () => {
               required
             />
           </div>
+
           <div class="grid gap-2">
-            <div class="flex items-center">
-              <Label for="password">Password</Label>
-              <a v-if="!isSignUp" href="#" class="ml-auto inline-block text-sm underline">
-                Forgot password?
-              </a>
-            </div>
+            <Label for="password">Password</Label>
             <Input 
               id="password"
               v-model="password"
               type="password" 
               required 
+              placeholder="Min. 8 characters"
+            />
+          </div>
+
+          <div class="grid gap-2">
+            <Label for="confirmPassword">Confirm Password</Label>
+            <Input 
+              id="confirmPassword"
+              v-model="confirmPassword"
+              type="password" 
+              required 
+              placeholder="Confirm your password"
             />
           </div>
           
@@ -93,20 +128,20 @@ const goToSignUp = () => {
           </div>
           
           <Button type="submit" class="w-full" :disabled="isLoading">
-            {{ isLoading ? 'Processing...' : 'Sign In' }}
+            {{ isLoading ? 'Creating Account...' : 'Create Account' }}
           </Button>
         </form>
         
         <div class="mt-4 text-center text-sm">
-          Don't have an account?
+          Already have an account?
           <button 
-            @click="goToSignUp" 
+            @click="router.push('/auth')" 
             class="underline ml-1"
           >
-            Create one
+            Sign in
           </button>
         </div>
       </CardContent>
     </Card>
   </div>
-</template>
+</template> 
