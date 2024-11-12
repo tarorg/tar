@@ -34,6 +34,7 @@ import {
   SheetDescription,
 } from '@/components/ui/sheet'
 import { initDB, saveAttributes, getAttributes, saveOptions, getOptions, dbStatus } from '@/services/indexedDB'
+import AppHeader from '@/components/AppHeader.vue'
 
 interface AttributeOption {
   value: string
@@ -180,17 +181,6 @@ const toggleVisualType = (option: any) => {
   }
 }
 
-const menuItems = [
-  { icon: Settings, label: 'Settings' },
-  { icon: Package, label: 'Products', link: '/products' },
-]
-
-const filteredMenuItems = computed(() => {
-  return menuItems.filter(item => 
-    item.label.toLowerCase().includes(menuSearchQuery.value.toLowerCase())
-  )
-})
-
 // Add loading state
 const isLoading = ref(true)
 
@@ -247,292 +237,156 @@ watch(optionValues, async (newValue) => {
 
 <template>
   <div class="flex flex-col min-h-screen w-full">
-    <!-- Header with menu -->
-    <header class="sticky top-0 flex h-16 items-center border-b bg-white px-2 md:px-6 z-10">
-      <div class="flex w-full items-center">
-        <DropdownMenu>
-          <DropdownMenuTrigger as-child>
-            <Button variant="secondary" size="icon" class="rounded-full">
-              <Square class="h-5 w-5" />
-              <span class="sr-only">Toggle menu</span>
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent class="w-screen md:w-56">
-            <div class="p-2">
-              <div class="relative w-full items-center">
-                <Input 
-                  v-model="menuSearchQuery"
-                  type="text" 
-                  placeholder="Search menu..." 
-                  class="text-xl"
-                />
-              </div>
-            </div>
-            <DropdownMenuGroup>
-              <template v-for="item in filteredMenuItems" :key="item.label">
-                <DropdownMenuItem class="text-xl py-2">
-                  <component :is="item.icon" class="mr-2 h-5 w-5" />
-                  <span v-if="item.link">
-                    <NuxtLink :to="item.link" class="flex items-center">
-                      {{ item.label }}
-                    </NuxtLink>
-                  </span>
-                  <span v-else>{{ item.label }}</span>
-                </DropdownMenuItem>
-              </template>
-            </DropdownMenuGroup>
-          </DropdownMenuContent>
-        </DropdownMenu>
-        <div class="flex-1"></div>
-        <div class="flex items-center">
-          <Button variant="ghost" size="icon" class="rounded-full">
-            <Triangle class="h-5 w-5" />
-            <span class="sr-only">Triangle</span>
+    <AppHeader />
+    <div class="flex-1 p-8">
+      <!-- Add attribute button -->
+      <div class="flex justify-between items-center mb-6">
+        <div class="flex items-center gap-4">
+          <Select v-model="selectedAttribute">
+            <SelectTrigger class="w-[180px]">
+              <SelectValue placeholder="Select attribute" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem v-for="option in attributeOptions" :key="option.value" :value="option.value">
+                {{ option.label }}
+              </SelectItem>
+            </SelectContent>
+          </Select>
+          <Button variant="outline" @click="showAddAttributeSheet = true">
+            <Plus class="h-4 w-4 mr-2" />
+            Add Attribute
           </Button>
-          <Button variant="ghost" size="icon" class="rounded-full">
-            <Circle class="h-5 w-5" />
-            <span class="sr-only">Circle</span>
-          </Button>
+        </div>
+        <div class="relative w-full max-w-sm">
+          <Search class="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Input
+            v-model="optionSearchQuery"
+            placeholder="Search options..."
+            class="pl-8"
+          />
         </div>
       </div>
-    </header>
 
-    <!-- Main content -->
-    <div class="flex-1 p-6">
-      <div v-if="isLoading" class="flex items-center justify-center h-full">
-        <div class="text-lg">Loading...</div>
-      </div>
-      <div v-else class="max-w-4xl mx-auto space-y-6">
-        <div class="flex items-center justify-between">
-          <h1 class="text-2xl font-bold">Attribute Options</h1>
-        </div>
-
-        <!-- Attribute selector and search -->
-        <div class="flex gap-4 items-center">
-          <div class="flex gap-2 items-center">
-            <Select v-model="selectedAttribute" class="w-[200px]">
-              <SelectTrigger>
-                <SelectValue placeholder="Select attribute" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem v-for="option in attributeOptions" 
-                           :key="option.value" 
-                           :value="option.value">
-                  {{ option.label }}
-                </SelectItem>
-              </SelectContent>
-            </Select>
-            <Button 
-              variant="outline" 
-              size="icon"
-              @click="showAddAttributeSheet = true"
-            >
-              <Plus class="h-4 w-4" />
-            </Button>
-          </div>
-
-          <div class="flex-1 relative">
-            <Search class="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              v-model="optionSearchQuery"
-              placeholder="Search options..."
-              class="pl-8"
-            />
-          </div>
-
-          <Button variant="outline" size="icon" @click="addNewRow">
-            <Plus class="h-4 w-4" />
-          </Button>
-        </div>
-
-        <!-- Options table -->
-        <div class="border rounded-lg overflow-hidden">
-          <div class="grid grid-cols-[80px_1fr_1fr] bg-white">
-            <!-- Table headers -->
-            <div class="p-3 font-medium text-sm text-muted-foreground border-b">
-              Visual
-            </div>
-            <div class="p-3 font-medium text-sm text-muted-foreground border-b">
-              Value
-            </div>
-            <div class="p-3 font-medium text-sm text-muted-foreground border-b">
-              Identifier
-            </div>
-
-            <!-- Table rows -->
-            <template v-for="option in filteredValues" :key="option.id">
+      <!-- Options table -->
+      <div class="rounded-md border">
+        <table class="w-full">
+          <thead>
+            <tr class="border-b">
+              <th class="h-12 px-4 text-left align-middle font-medium">Visual</th>
+              <th class="h-12 px-4 text-left align-middle font-medium">Value</th>
+              <th class="h-12 px-4 text-left align-middle font-medium">Identifier</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="option in filteredValues" :key="option.id" class="border-b">
               <!-- Visual cell -->
-              <div class="p-3 flex items-center justify-center group relative hover:bg-gray-50/50 transition-colors"
-                   @click="openColorPicker(option)">
-                <template v-if="editingId === option.id && editingCell === 'visual' && option.attribute !== 'color'">
-                  <input
-                    type="text"
-                    v-model="tempEditValue"
-                    class="w-full p-1 outline-none border-none bg-transparent"
-                    @blur="saveEdit(option)"
-                    @keydown="handleKeyDown($event, option)"
-                  />
-                </template>
-                <template v-else>
-                  <div v-if="option.attribute === 'color'" 
-                       class="w-8 h-8 rounded-md cursor-pointer shadow-sm ring-1 ring-inset ring-gray-200"
-                       :style="{ backgroundColor: option.visual }" />
-                  <span v-else-if="option.type === 'text'" 
-                        class="text-sm font-medium cursor-pointer w-8 h-8 flex items-center justify-center">
+              <td class="p-4">
+                <div class="flex items-center gap-2">
+                  <div v-if="option.type === 'color'" 
+                    class="h-6 w-6 rounded cursor-pointer"
+                    :style="{ backgroundColor: option.visual }"
+                    @click="openColorPicker(option)"
+                  ></div>
+                  <div v-else class="cursor-pointer" @click="openColorPicker(option)">
                     {{ option.visual }}
-                  </span>
-                  <img v-else 
-                       :src="option.visual" 
-                       class="w-8 h-8 object-cover rounded-md shadow-sm ring-1 ring-inset ring-gray-200" />
-                  
-                  <button v-if="option.attribute !== 'color'"
-                          class="absolute right-1 top-1 opacity-0 group-hover:opacity-100"
-                          @click.stop="toggleVisualType(option)">
-                    <ImageIcon class="h-4 w-4 text-gray-400 hover:text-gray-600" />
-                  </button>
-                </template>
-              </div>
-
+                  </div>
+                  <Button variant="ghost" size="icon" @click="toggleVisualType(option)" v-if="option.attribute !== 'color'">
+                    <ImageIcon v-if="option.type === 'text'" class="h-4 w-4" />
+                    <span v-else class="text-sm">Aa</span>
+                  </Button>
+                </div>
+              </td>
+              
               <!-- Value cell -->
-              <div class="p-3 hover:bg-gray-50/50 transition-colors cursor-text"
-                   @click="startEditing(option, 'value')">
-                <template v-if="editingId === option.id && editingCell === 'value'">
-                  <input
-                    type="text"
+              <td class="p-4">
+                <div v-if="editingId === option.id && editingCell === 'value'" class="flex items-center gap-2">
+                  <Input
                     v-model="tempEditValue"
-                    class="w-full outline-none border-none bg-transparent"
-                    @blur="saveEdit(option)"
+                    class="h-8"
                     @keydown="handleKeyDown($event, option)"
-                    ref="editInput"
-                    autofocus
+                    @blur="saveEdit(option)"
                   />
-                </template>
-                <span v-else class="text-[14px]" :class="{ 'text-gray-400': !option.value }">
-                  {{ option.value || 'Value' }}
-                </span>
-              </div>
-
+                </div>
+                <div v-else class="cursor-pointer" @click="startEditing(option, 'value')">
+                  {{ option.value }}
+                </div>
+              </td>
+              
               <!-- Identifier cell -->
-              <div class="p-3 hover:bg-gray-50/50 transition-colors cursor-text"
-                   @click="startEditing(option, 'identifier')">
-                <template v-if="editingId === option.id && editingCell === 'identifier'">
-                  <input
-                    type="text"
+              <td class="p-4">
+                <div v-if="editingId === option.id && editingCell === 'identifier'" class="flex items-center gap-2">
+                  <Input
                     v-model="tempEditValue"
-                    class="w-full outline-none border-none bg-transparent"
-                    @blur="saveEdit(option)"
+                    class="h-8"
                     @keydown="handleKeyDown($event, option)"
-                    ref="editInput"
-                    autofocus
+                    @blur="saveEdit(option)"
                   />
-                </template>
-                <span v-else class="text-[14px]" :class="{ 'text-gray-400': !option.identifier }">
-                  {{ option.identifier || 'Identifier' }}
-                </span>
-              </div>
-            </template>
-          </div>
-        </div>
+                </div>
+                <div v-else class="cursor-pointer" @click="startEditing(option, 'identifier')">
+                  {{ option.identifier }}
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
       </div>
-    </div>
 
-    <!-- Color Picker Sheet -->
-    <Sheet v-model:open="showColorPicker">
-      <SheetContent side="right" class="w-[400px]">
-        <SheetHeader>
-          <SheetTitle>Choose Color</SheetTitle>
-          <SheetDescription>
-            Select a color or enter a hex code
-          </SheetDescription>
-        </SheetHeader>
-        <div class="grid gap-4 py-4">
-          <div class="flex flex-col space-y-4">
+      <!-- Add row button -->
+      <Button variant="outline" class="mt-4" @click="addNewRow">
+        <Plus class="h-4 w-4 mr-2" />
+        Add Row
+      </Button>
+
+      <!-- Color picker sheet -->
+      <Sheet v-model:open="showColorPicker">
+        <SheetContent>
+          <SheetHeader>
+            <SheetTitle>Choose Color</SheetTitle>
+            <SheetDescription>
+              Select a color for this option
+            </SheetDescription>
+          </SheetHeader>
+          <div class="grid gap-4 py-4">
             <input
               type="color"
               v-model="colorCode"
-              class="w-full h-40 cursor-pointer"
+              class="w-full h-40"
             />
-            <div class="space-y-2">
-              <label class="text-sm font-medium">Color Code</label>
+            <Button @click="saveColor">Save Color</Button>
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      <!-- Add attribute sheet -->
+      <Sheet v-model:open="showAddAttributeSheet">
+        <SheetContent>
+          <SheetHeader>
+            <SheetTitle>Add New Attribute</SheetTitle>
+            <SheetDescription>
+              Create a new attribute for your products
+            </SheetDescription>
+          </SheetHeader>
+          <div class="grid gap-4 py-4">
+            <div class="grid gap-2">
               <Input
-                v-model="colorCode"
-                placeholder="#000000"
+                v-model="newAttributeName"
+                placeholder="Attribute name"
               />
+              <Select v-model="newAttributeType">
+                <SelectTrigger>
+                  <SelectValue placeholder="Select type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="text">Text</SelectItem>
+                  <SelectItem value="color">Color</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
+            <Button @click="addCustomAttribute">Add Attribute</Button>
           </div>
-          <div class="flex justify-end space-x-2">
-            <Button variant="outline" @click="showColorPicker = false">
-              Cancel
-            </Button>
-            <Button @click="saveColor">
-              Save
-            </Button>
-          </div>
-        </div>
-      </SheetContent>
-    </Sheet>
-
-    <!-- Add Custom Attribute Sheet -->
-    <Sheet v-model:open="showAddAttributeSheet">
-      <SheetContent side="right" class="w-[400px]">
-        <SheetHeader>
-          <SheetTitle>Add Custom Attribute</SheetTitle>
-          <SheetDescription>
-            Create a new attribute with custom settings
-          </SheetDescription>
-        </SheetHeader>
-        <div class="grid gap-4 py-4">
-          <div class="space-y-2">
-            <label class="text-sm font-medium">Attribute Name</label>
-            <Input
-              v-model="newAttributeName"
-              placeholder="e.g., Pattern, Style, Weight"
-            />
-          </div>
-          
-          <div class="space-y-2">
-            <label class="text-sm font-medium">Visual Type</label>
-            <Select v-model="newAttributeType">
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="text">Text</SelectItem>
-                <SelectItem value="color">Color</SelectItem>
-                <SelectItem value="image">Image</SelectItem>
-              </SelectContent>
-            </Select>
-            
-            <p class="text-sm text-muted-foreground mt-2">
-              <template v-if="newAttributeType === 'text'">
-                Text will be displayed as letters or symbols
-              </template>
-              <template v-if="newAttributeType === 'color'">
-                Colors will be shown as color swatches
-              </template>
-              <template v-if="newAttributeType === 'image'">
-                Images can be uploaded for each option
-              </template>
-            </p>
-          </div>
-
-          <div class="flex justify-end space-x-2 pt-4">
-            <Button 
-              variant="outline" 
-              @click="showAddAttributeSheet = false"
-            >
-              Cancel
-            </Button>
-            <Button 
-              @click="addCustomAttribute"
-              :disabled="!newAttributeName.trim()"
-            >
-              Add Attribute
-            </Button>
-          </div>
-        </div>
-      </SheetContent>
-    </Sheet>
+        </SheetContent>
+      </Sheet>
+    </div>
   </div>
 </template>
 

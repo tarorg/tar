@@ -137,55 +137,7 @@ const navigateToAddProduct = () => {
 
 <template>
   <div class="flex flex-col min-h-screen w-full">
-    <header class="sticky top-0 flex h-16 items-center border-b bg-white px-2 md:px-6 z-10">
-      <div class="flex w-full items-center">
-        <DropdownMenu>
-          <DropdownMenuTrigger as-child>
-            <Button variant="secondary" size="icon" class="rounded-full">
-              <Square class="h-5 w-5" />
-              <span class="sr-only">Toggle menu</span>
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent class="w-screen md:w-56">
-            <div class="p-2">
-              <div class="relative w-full items-center">
-                <Input 
-                  v-model="menuSearchQuery"
-                  type="text" 
-                  placeholder="Search menu..." 
-                  class="text-xl"
-                />
-              </div>
-            </div>
-            <DropdownMenuGroup>
-              <template v-for="item in filteredMenuItems" :key="item.label">
-                <DropdownMenuItem class="text-xl py-2">
-                  <component :is="item.icon" class="mr-2 h-5 w-5" />
-                  <span v-if="item.link">
-                    <NuxtLink :to="item.link" class="flex items-center">
-                      {{ item.label }}
-                    </NuxtLink>
-                  </span>
-                  <span v-else>{{ item.label }}</span>
-                </DropdownMenuItem>
-              </template>
-            </DropdownMenuGroup>
-          </DropdownMenuContent>
-        </DropdownMenu>
-        <div class="flex-1"></div>
-        <div class="flex items-center">
-          <Button variant="ghost" size="icon" class="rounded-full">
-            <Triangle class="h-5 w-5" />
-            <span class="sr-only">Triangle</span>
-          </Button>
-          <Button variant="ghost" size="icon" class="rounded-full">
-            <Circle class="h-5 w-5" />
-            <span class="sr-only">Circle</span>
-          </Button>
-        </div>
-      </div>
-    </header>
-
+    <AppHeader />
     <div class="h-full flex-1 flex-col space-y-8 p-8">
       <div class="flex justify-between items-center">
         <input 
