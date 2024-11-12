@@ -57,7 +57,7 @@ const filteredMenuItems = computed(() => {
             <span class="sr-only">Toggle menu</span>
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent class="w-screen md:w-56">
+        <DropdownMenuContent class="w-screen h-[calc(100vh-4rem)] md:h-auto md:w-56">
           <div class="p-2">
             <div class="relative w-full items-center">
               <Input 
@@ -69,7 +69,7 @@ const filteredMenuItems = computed(() => {
             </div>
           </div>
           <DropdownMenuSeparator />
-          <DropdownMenuGroup>
+          <DropdownMenuGroup class="overflow-y-auto max-h-[calc(100vh-10rem)] md:max-h-[400px]">
             <template v-for="item in filteredMenuItems" :key="item.label">
               <NuxtLink v-if="item.link" :to="item.link" class="block">
                 <DropdownMenuItem class="text-xl py-2">
@@ -98,4 +98,11 @@ const filteredMenuItems = computed(() => {
       </div>
     </div>
   </header>
-</template> 
+</template>
+
+<style scoped>
+/* Add smooth scrolling for the menu group */
+.overflow-y-auto {
+  -webkit-overflow-scrolling: touch;
+}
+</style> 
