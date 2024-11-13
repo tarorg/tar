@@ -85,6 +85,13 @@ interface StockRow {
   shelfLife: string
 }
 
+// Add these interfaces near the top
+interface UploadResponse {
+  success: boolean
+  url: string
+  message?: string
+}
+
 const goBack = () => {
   navigateTo('/products')
 }
@@ -105,29 +112,68 @@ const toggleType = () => {
   selectedType.value = selectedType.value === 'G' ? 'I' : 'G'
 }
 
-const handlePrimaryImageUpload = (event: Event) => {
+const handlePrimaryImageUpload = async (event: Event) => {
   const input = event.target as HTMLInputElement
   if (input.files && input.files[0]) {
-    const reader = new FileReader()
-    reader.onload = (e) => {
-      if (e.target?.result) {
-        primaryImage.value = e.target.result as string
+    try {
+      const file = input.files[0]
+      const formData = new FormData()
+      
+      // Generate a unique filename using timestamp and original extension
+      const ext = file.name.split('.').pop()
+      const filename = `${Date.now()}-${Math.random().toString(36).substring(7)}.${ext}`
+      
+      formData.append('name', filename)
+      formData.append('file', file)
+
+      const response = await fetch('https://par.wetarteam.workers.dev/upload', {
+        method: 'PUT',
+        body: formData
+      })
+
+      const result: UploadResponse = await response.json()
+
+      if (result.success && result.url) {
+        primaryImage.value = result.url
+      } else {
+        throw new Error(result.message || 'Upload failed')
       }
+    } catch (error) {
+      console.error('Failed to upload image:', error)
+      // You might want to add error handling UI here
     }
-    reader.readAsDataURL(input.files[0])
   }
 }
 
-const handleAdditionalImageUpload = (event: Event) => {
+const handleAdditionalImageUpload = async (event: Event) => {
   const input = event.target as HTMLInputElement
   if (input.files && input.files[0]) {
-    const reader = new FileReader()
-    reader.onload = (e) => {
-      if (e.target?.result) {
-        additionalImages.value.push(e.target.result as string)
+    try {
+      const file = input.files[0]
+      const formData = new FormData()
+      
+      const ext = file.name.split('.').pop()
+      const filename = `${Date.now()}-${Math.random().toString(36).substring(7)}.${ext}`
+      
+      formData.append('name', filename)
+      formData.append('file', file)
+
+      const response = await fetch('https://par.wetarteam.workers.dev/upload', {
+        method: 'PUT',
+        body: formData
+      })
+
+      const result: UploadResponse = await response.json()
+
+      if (result.success && result.url) {
+        additionalImages.value.push(result.url)
+      } else {
+        throw new Error(result.message || 'Upload failed')
       }
+    } catch (error) {
+      console.error('Failed to upload image:', error)
+      // You might want to add error handling UI here
     }
-    reader.readAsDataURL(input.files[0])
   }
 }
 
@@ -584,29 +630,67 @@ const skuAdditionalImages = ref<string[]>([])
 const skuPrimaryFileInput = ref<HTMLInputElement | null>(null)
 const skuAdditionalFileInput = ref<HTMLInputElement | null>(null)
 
-const handleSkuPrimaryImageUpload = (event: Event) => {
+const handleSkuPrimaryImageUpload = async (event: Event) => {
   const input = event.target as HTMLInputElement
   if (input.files && input.files[0]) {
-    const reader = new FileReader()
-    reader.onload = (e) => {
-      if (e.target?.result) {
-        skuPrimaryImage.value = e.target.result as string
+    try {
+      const file = input.files[0]
+      const formData = new FormData()
+      
+      const ext = file.name.split('.').pop()
+      const filename = `${Date.now()}-${Math.random().toString(36).substring(7)}.${ext}`
+      
+      formData.append('name', filename)
+      formData.append('file', file)
+
+      const response = await fetch('https://par.wetarteam.workers.dev/upload', {
+        method: 'PUT',
+        body: formData
+      })
+
+      const result: UploadResponse = await response.json()
+
+      if (result.success && result.url) {
+        skuPrimaryImage.value = result.url
+      } else {
+        throw new Error(result.message || 'Upload failed')
       }
+    } catch (error) {
+      console.error('Failed to upload image:', error)
+      // You might want to add error handling UI here
     }
-    reader.readAsDataURL(input.files[0])
   }
 }
 
-const handleSkuAdditionalImageUpload = (event: Event) => {
+const handleSkuAdditionalImageUpload = async (event: Event) => {
   const input = event.target as HTMLInputElement
   if (input.files && input.files[0]) {
-    const reader = new FileReader()
-    reader.onload = (e) => {
-      if (e.target?.result) {
-        skuAdditionalImages.value.push(e.target.result as string)
+    try {
+      const file = input.files[0]
+      const formData = new FormData()
+      
+      const ext = file.name.split('.').pop()
+      const filename = `${Date.now()}-${Math.random().toString(36).substring(7)}.${ext}`
+      
+      formData.append('name', filename)
+      formData.append('file', file)
+
+      const response = await fetch('https://par.wetarteam.workers.dev/upload', {
+        method: 'PUT',
+        body: formData
+      })
+
+      const result: UploadResponse = await response.json()
+
+      if (result.success && result.url) {
+        skuAdditionalImages.value.push(result.url)
+      } else {
+        throw new Error(result.message || 'Upload failed')
       }
+    } catch (error) {
+      console.error('Failed to upload image:', error)
+      // You might want to add error handling UI here
     }
-    reader.readAsDataURL(input.files[0])
   }
 }
 
