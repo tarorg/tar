@@ -112,6 +112,10 @@ const toggleType = () => {
   selectedType.value = selectedType.value === 'G' ? 'I' : 'G'
 }
 
+// Add this constant for the base URL
+const R2_BASE_URL = 'https://pub-645e6a6aec9743558410b2ba6cedc346.r2.dev'
+
+// Update the handlePrimaryImageUpload function
 const handlePrimaryImageUpload = async (event: Event) => {
   const input = event.target as HTMLInputElement
   if (input.files && input.files[0]) {
@@ -131,20 +135,26 @@ const handlePrimaryImageUpload = async (event: Event) => {
         body: formData
       })
 
-      const result: UploadResponse = await response.json()
-
-      if (result.success && result.url) {
-        primaryImage.value = result.url
-      } else {
-        throw new Error(result.message || 'Upload failed')
+      // First check if the response is ok
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
       }
+
+      // Try to parse the response as JSON
+      const result = await response.text()
+      
+      // If upload was successful, the file should be available at R2_BASE_URL
+      primaryImage.value = `${R2_BASE_URL}/${filename}`
+      console.log('Upload successful, image URL:', primaryImage.value)
+
     } catch (error) {
       console.error('Failed to upload image:', error)
-      // You might want to add error handling UI here
+      // You might want to show an error message to the user here
     }
   }
 }
 
+// Update the handleAdditionalImageUpload function similarly
 const handleAdditionalImageUpload = async (event: Event) => {
   const input = event.target as HTMLInputElement
   if (input.files && input.files[0]) {
@@ -163,16 +173,20 @@ const handleAdditionalImageUpload = async (event: Event) => {
         body: formData
       })
 
-      const result: UploadResponse = await response.json()
-
-      if (result.success && result.url) {
-        additionalImages.value.push(result.url)
-      } else {
-        throw new Error(result.message || 'Upload failed')
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
       }
+
+      // Try to parse the response as text
+      const result = await response.text()
+      
+      // If upload was successful, add the URL to additional images
+      additionalImages.value.push(`${R2_BASE_URL}/${filename}`)
+      console.log('Upload successful, image URL:', `${R2_BASE_URL}/${filename}`)
+
     } catch (error) {
       console.error('Failed to upload image:', error)
-      // You might want to add error handling UI here
+      // You might want to show an error message to the user here
     }
   }
 }
@@ -630,6 +644,7 @@ const skuAdditionalImages = ref<string[]>([])
 const skuPrimaryFileInput = ref<HTMLInputElement | null>(null)
 const skuAdditionalFileInput = ref<HTMLInputElement | null>(null)
 
+// Update SKU image upload handlers
 const handleSkuPrimaryImageUpload = async (event: Event) => {
   const input = event.target as HTMLInputElement
   if (input.files && input.files[0]) {
@@ -650,14 +665,13 @@ const handleSkuPrimaryImageUpload = async (event: Event) => {
 
       const result: UploadResponse = await response.json()
 
-      if (result.success && result.url) {
-        skuPrimaryImage.value = result.url
+      if (result.success) {
+        skuPrimaryImage.value = `${R2_BASE_URL}/${filename}`
       } else {
         throw new Error(result.message || 'Upload failed')
       }
     } catch (error) {
       console.error('Failed to upload image:', error)
-      // You might want to add error handling UI here
     }
   }
 }
@@ -682,14 +696,13 @@ const handleSkuAdditionalImageUpload = async (event: Event) => {
 
       const result: UploadResponse = await response.json()
 
-      if (result.success && result.url) {
-        skuAdditionalImages.value.push(result.url)
+      if (result.success) {
+        skuAdditionalImages.value.push(`${R2_BASE_URL}/${filename}`)
       } else {
         throw new Error(result.message || 'Upload failed')
       }
     } catch (error) {
       console.error('Failed to upload image:', error)
-      // You might want to add error handling UI here
     }
   }
 }
