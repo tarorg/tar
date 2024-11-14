@@ -113,6 +113,15 @@ interface MediaPreview {
   index?: number
 }
 
+// Add this interface for SKU details
+interface SkuDetails {
+  upc: string
+  collection: string
+  cost: number
+  price: number
+  mrp: number
+}
+
 const goBack = () => {
   navigateTo('/products')
 }
@@ -646,9 +655,27 @@ const openSkuDetails = (sku: GeneratedSku) => {
 const showSkuDetailsSheet = ref(false)
 const selectedSkuDetails = ref<GeneratedSku | null>(null)
 
-// Add this method to handle SKU cell tap
+// Add this ref to store SKU details
+const skuDetailsData = ref<{ [key: string]: SkuDetails }>({})
+
+// Add this method to initialize SKU details
+const initSkuDetails = (sku: string) => {
+  if (!skuDetailsData.value[sku]) {
+    skuDetailsData.value[sku] = {
+      upc: '',
+      collection: '',
+      cost: 0,
+      price: 0,
+      mrp: 0
+    }
+  }
+}
+
+// Update the openSkuDetailsSheet method
 const openSkuDetailsSheet = (sku: GeneratedSku) => {
   selectedSkuDetails.value = sku
+  initSkuDetails(sku.sku)  // Initialize SKU details if not exists
+  
   // Initialize stock details if not exists
   if (!stockDetails.value[sku.sku]) {
     stockDetails.value[sku.sku] = {
@@ -663,6 +690,14 @@ const openSkuDetailsSheet = (sku: GeneratedSku) => {
   showSkuDetailsSheet.value = true
 }
 
+// Add method to handle field updates
+const updateSkuField = (field: keyof SkuDetails, value: string | number) => {
+  if (selectedSkuDetails.value) {
+    const sku = selectedSkuDetails.value.sku
+    skuDetailsData.value[sku][field] = value
+  }
+}
+
 // Add this computed property
 const totalStock = computed(() => {
   const sku = selectedSkuDetails.value?.sku || ''
@@ -670,17 +705,19 @@ const totalStock = computed(() => {
 })
 
 // Add these refs and methods for SKU media handling
-const skuPrimaryImage = ref<string>('')
-const skuAdditionalImages = ref<string[]>([])
+const skuMedia = ref<{ [key: string]: { primary: MediaItem | null; additional: MediaItem[] } }>({})
 const skuPrimaryFileInput = ref<HTMLInputElement | null>(null)
 const skuAdditionalFileInput = ref<HTMLInputElement | null>(null)
 
-// Update SKU image upload handlers
-const handleSkuPrimaryImageUpload = async (event: Event) => {
+// Add these methods for SKU media handling
+const handleSkuPrimaryUpload = async (event: Event) => {
+  if (!selectedSkuDetails.value) return
+  
   const input = event.target as HTMLInputElement
   if (input.files && input.files[0]) {
     try {
       const file = input.files[0]
+      const mediaType = getMediaType(file)
       const formData = new FormData()
       
       const ext = file.name.split('.').pop()
@@ -694,24 +731,39 @@ const handleSkuPrimaryImageUpload = async (event: Event) => {
         body: formData
       })
 
-      const result: UploadResponse = await response.json()
-
-      if (result.success) {
-        skuPrimaryImage.value = `${R2_BASE_URL}/${filename}`
-      } else {
-        throw new Error(result.message || 'Upload failed')
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
       }
+
+      const result = await response.text()
+      
+      // Initialize SKU media if not exists
+      if (!skuMedia.value[selectedSkuDetails.value.sku]) {
+        skuMedia.value[selectedSkuDetails.value.sku] = {
+          primary: null,
+          additional: []
+        }
+      }
+      
+      skuMedia.value[selectedSkuDetails.value.sku].primary = {
+        url: `${R2_BASE_URL}/${filename}`,
+        mediaType
+      }
+
     } catch (error) {
-      console.error('Failed to upload image:', error)
+      console.error('Failed to upload media:', error)
     }
   }
 }
 
-const handleSkuAdditionalImageUpload = async (event: Event) => {
+const handleSkuAdditionalUpload = async (event: Event) => {
+  if (!selectedSkuDetails.value) return
+  
   const input = event.target as HTMLInputElement
   if (input.files && input.files[0]) {
     try {
       const file = input.files[0]
+      const mediaType = getMediaType(file)
       const formData = new FormData()
       
       const ext = file.name.split('.').pop()
@@ -725,15 +777,27 @@ const handleSkuAdditionalImageUpload = async (event: Event) => {
         body: formData
       })
 
-      const result: UploadResponse = await response.json()
-
-      if (result.success) {
-        skuAdditionalImages.value.push(`${R2_BASE_URL}/${filename}`)
-      } else {
-        throw new Error(result.message || 'Upload failed')
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
       }
+
+      const result = await response.text()
+      
+      // Initialize SKU media if not exists
+      if (!skuMedia.value[selectedSkuDetails.value.sku]) {
+        skuMedia.value[selectedSkuDetails.value.sku] = {
+          primary: null,
+          additional: []
+        }
+      }
+      
+      skuMedia.value[selectedSkuDetails.value.sku].additional.push({
+        url: `${R2_BASE_URL}/${filename}`,
+        mediaType
+      })
+
     } catch (error) {
-      console.error('Failed to upload image:', error)
+      console.error('Failed to upload media:', error)
     }
   }
 }
@@ -744,6 +808,57 @@ const triggerSkuPrimaryFileInput = () => {
 
 const triggerSkuAdditionalFileInput = () => {
   skuAdditionalFileInput.value?.click()
+}
+
+// Add this method to handle SKU media preview
+const openSkuMediaPreview = (media: MediaItem, type: 'primary' | 'additional', index?: number) => {
+  selectedMediaPreview.value = {
+    url: media.url,
+    mediaType: media.mediaType,
+    type,
+    index
+  }
+  showMediaPreviewSheet.value = true
+}
+
+// Keep only this version of removeMedia and remove the other one
+const removeMedia = async () => {
+  if (!selectedMediaPreview.value) return
+
+  try {
+    const filename = selectedMediaPreview.value.url.split('/').pop()
+    if (!filename) throw new Error('Invalid file URL')
+
+    const response = await fetch(`https://par.wetarteam.workers.dev/${filename}`, {
+      method: 'DELETE'
+    })
+
+    if (!response.ok) {
+      throw new Error('Failed to delete file')
+    }
+
+    // Handle both product and SKU media removal
+    if (selectedSkuDetails.value) {
+      const sku = selectedSkuDetails.value.sku
+      if (selectedMediaPreview.value.type === 'primary') {
+        skuMedia.value[sku].primary = null
+      } else if (selectedMediaPreview.value.index !== undefined) {
+        skuMedia.value[sku].additional.splice(selectedMediaPreview.value.index, 1)
+      }
+    } else {
+      if (selectedMediaPreview.value.type === 'primary') {
+        primaryMedia.value = null
+      } else if (selectedMediaPreview.value.index !== undefined) {
+        additionalMedia.value.splice(selectedMediaPreview.value.index, 1)
+      }
+    }
+
+    showMediaPreviewSheet.value = false
+    selectedMediaPreview.value = null
+
+  } catch (error) {
+    console.error('Failed to remove media:', error)
+  }
 }
 
 // Add Date Picker Sheet
@@ -814,41 +929,6 @@ const openMediaPreview = (media: MediaItem, type: 'primary' | 'additional', inde
     index
   }
   showMediaPreviewSheet.value = true
-}
-
-// Update the removeMedia function
-const removeMedia = async () => {
-  if (!selectedMediaPreview.value) return
-
-  try {
-    // Extract filename from URL
-    const filename = selectedMediaPreview.value.url.split('/').pop()
-    if (!filename) throw new Error('Invalid file URL')
-
-    // Delete from R2 using the correct endpoint format
-    const response = await fetch(`https://par.wetarteam.workers.dev/${filename}`, {
-      method: 'DELETE'
-    })
-
-    if (!response.ok) {
-      throw new Error('Failed to delete file')
-    }
-
-    // Remove from local state
-    if (selectedMediaPreview.value.type === 'primary') {
-      primaryMedia.value = null
-    } else if (selectedMediaPreview.value.index !== undefined) {
-      additionalMedia.value.splice(selectedMediaPreview.value.index, 1)
-    }
-
-    // Close preview sheet
-    showMediaPreviewSheet.value = false
-    selectedMediaPreview.value = null
-
-  } catch (error) {
-    console.error('Failed to remove media:', error)
-    // You might want to show an error message to the user here
-  }
 }
 </script>
 
@@ -1294,137 +1374,167 @@ const removeMedia = async () => {
           <!-- Table3 -->
           <div class="border rounded-lg overflow-hidden">
             <!-- UPC Row -->
-            <div class="flex items-center border-b hover:bg-gray-50">
-              <div class="w-32 border-r p-3">
-                <div class="text-sm font-medium">UPC</div>
+            <div class="flex items-center border-b">
+              <div class="w-24 p-3 border-r bg-gray-50">
+                <span class="text-sm font-medium">UPC</span>
               </div>
               <div class="flex-1 p-2">
                 <Input
-                  :value="currentSkuDetails.upc"
-                  @input="e => updateSkuField('upc', e.target.value)"
-                  class="w-full py-3 px-4 bg-transparent border-0 focus:outline-none placeholder:text-gray-400 text-sm"
+                  :value="skuDetailsData[selectedSkuDetails?.sku || '']?.upc"
+                  @input="e => updateSkuField('upc', (e.target as HTMLInputElement).value)"
+                  type="text"
                   placeholder="Enter UPC"
+                  class="w-full border-0 shadow-none focus:ring-0"
+                  tabindex="-1"
+                  :autofocus="false"
                 />
               </div>
             </div>
 
             <!-- Images Row -->
-            <div class="flex items-center border-b hover:bg-gray-50">
+            <div class="flex items-center border-b">
               <div class="w-32 border-r p-3">
                 <div class="text-sm font-medium">Images</div>
               </div>
               <div class="flex-1 p-2">
-                <div class="flex items-center gap-2 overflow-x-auto">
-                  <div 
-                    v-for="(image, index) in skuDetails[selectedSku?.sku || '']?.images" 
-                    :key="index"
-                    class="flex-shrink-0 w-12 h-12 rounded border overflow-hidden"
-                  >
-                    <img 
-                      :src="image" 
-                      class="w-full h-full object-cover"
-                      alt="SKU image"
+                <div class="flex items-center gap-4">
+                  <!-- Primary Media -->
+                  <div class="flex-shrink-0">
+                    <button 
+                      @click="triggerSkuPrimaryFileInput"
+                      class="w-12 h-12 rounded border flex items-center justify-center hover:bg-gray-50 relative overflow-hidden"
+                      :class="{ 'border-dashed border-gray-300': !skuMedia[selectedSkuDetails?.sku]?.primary }"
+                    >
+                      <template v-if="skuMedia[selectedSkuDetails?.sku]?.primary">
+                        <img 
+                          v-if="skuMedia[selectedSkuDetails?.sku].primary.mediaType === 'image'"
+                          :src="skuMedia[selectedSkuDetails?.sku].primary.url" 
+                          class="w-full h-full object-cover cursor-pointer"
+                          alt="Primary SKU media"
+                          @click.stop="openSkuMediaPreview(skuMedia[selectedSkuDetails?.sku].primary, 'primary')"
+                        />
+                        <div 
+                          v-else 
+                          class="w-full h-full flex items-center justify-center cursor-pointer"
+                          @click.stop="openSkuMediaPreview(skuMedia[selectedSkuDetails?.sku].primary, 'primary')"
+                        >
+                          <VideoIcon class="w-8 h-8 text-gray-400" />
+                        </div>
+                      </template>
+                      <ImageIcon v-else class="w-6 h-6 text-gray-400" />
+                    </button>
+                    <input
+                      ref="skuPrimaryFileInput"
+                      type="file"
+                      :accept="acceptedFileTypes"
+                      class="hidden"
+                      @change="handleSkuPrimaryUpload"
                     />
                   </div>
-                  <button 
-                    @click="triggerSkuFileInput"
-                    class="flex-shrink-0 w-12 h-12 rounded border border-dashed border-gray-300 flex items-center justify-center hover:bg-gray-50"
-                  >
-                    <Plus class="w-4 h-4 text-gray-400" />
-                  </button>
+
+                  <!-- Additional Media -->
+                  <div class="flex-1">
+                    <div class="flex items-center gap-2 overflow-x-auto">
+                      <div 
+                        v-for="(media, index) in skuMedia[selectedSkuDetails?.sku]?.additional" 
+                        :key="index"
+                        class="flex-shrink-0 w-12 h-12 rounded border overflow-hidden cursor-pointer"
+                        @click="openSkuMediaPreview(media, 'additional', index)"
+                      >
+                        <img 
+                          v-if="media.mediaType === 'image'"
+                          :src="media.url" 
+                          class="w-full h-full object-cover"
+                          alt="Additional SKU media"
+                        />
+                        <div 
+                          v-else 
+                          class="w-full h-full flex items-center justify-center"
+                        >
+                          <VideoIcon class="w-8 h-8 text-gray-400" />
+                        </div>
+                      </div>
+                      
+                      <button 
+                        @click="triggerSkuAdditionalFileInput"
+                        class="flex-shrink-0 w-12 h-12 rounded border border-dashed border-gray-300 flex items-center justify-center hover:bg-gray-50"
+                      >
+                        <Plus class="w-6 h-6 text-gray-400" />
+                      </button>
+                    </div>
+                    <input
+                      ref="skuAdditionalFileInput"
+                      type="file"
+                      :accept="acceptedFileTypes"
+                      class="hidden"
+                      @change="handleSkuAdditionalUpload"
+                    />
+                  </div>
                 </div>
-                <input
-                  ref="skuFileInput"
-                  type="file"
-                  accept="image/*"
-                  class="hidden"
-                  @change="(e) => handleSkuImageUpload(e, selectedSku?.sku || '')"
-                />
               </div>
             </div>
 
             <!-- Collection Row -->
-            <div class="flex items-center border-b hover:bg-gray-50">
+            <div class="flex items-center border-b">
               <div class="w-32 border-r p-3">
                 <div class="text-sm font-medium">Collection</div>
               </div>
               <div class="flex-1 p-2">
                 <Input
-                  :value="currentSkuDetails.collection"
-                  @input="e => updateSkuField('collection', e.target.value)"
-                  class="w-full py-3 px-4 bg-transparent border-0 focus:outline-none placeholder:text-gray-400 text-sm"
+                  :value="skuDetailsData[selectedSkuDetails?.sku || '']?.collection"
+                  @input="e => updateSkuField('collection', (e.target as HTMLInputElement).value)"
+                  type="text"
                   placeholder="Enter collection"
+                  class="w-full border-0 shadow-none focus:ring-0"
                 />
               </div>
             </div>
 
             <!-- Cost Row -->
-            <div class="flex items-center border-b hover:bg-gray-50">
+            <div class="flex items-center border-b">
               <div class="w-32 border-r p-3">
                 <div class="text-sm font-medium">Cost</div>
               </div>
               <div class="flex-1 p-2">
                 <Input
-                  :value="currentSkuDetails.cost"
-                  @input="e => updateSkuField('cost', Number(e.target.value))"
+                  :value="skuDetailsData[selectedSkuDetails?.sku || '']?.cost"
+                  @input="e => updateSkuField('cost', Number((e.target as HTMLInputElement).value))"
                   type="number"
-                  class="w-full py-3 px-4 bg-transparent border-0 focus:outline-none placeholder:text-gray-400 text-sm"
                   placeholder="0.00"
+                  class="w-full border-0 shadow-none focus:ring-0"
                 />
               </div>
             </div>
 
             <!-- Price Row -->
-            <div class="flex items-center border-b hover:bg-gray-50">
+            <div class="flex items-center border-b">
               <div class="w-32 border-r p-3">
                 <div class="text-sm font-medium">Price</div>
               </div>
               <div class="flex-1 p-2">
                 <Input
-                  :value="currentSkuDetails.price"
-                  @input="e => updateSkuField('price', Number(e.target.value))"
+                  :value="skuDetailsData[selectedSkuDetails?.sku || '']?.price"
+                  @input="e => updateSkuField('price', Number((e.target as HTMLInputElement).value))"
                   type="number"
-                  class="w-full py-3 px-4 bg-transparent border-0 focus:outline-none placeholder:text-gray-400 text-sm"
                   placeholder="0.00"
+                  class="w-full border-0 shadow-none focus:ring-0"
                 />
               </div>
             </div>
 
-            <!-- Max Row -->
-            <div class="flex items-center border-b hover:bg-gray-50">
+            <!-- MRP Row -->
+            <div class="flex items-center">
               <div class="w-32 border-r p-3">
-                <div class="text-sm font-medium">Max</div>
+                <div class="text-sm font-medium">MRP</div>
               </div>
               <div class="flex-1 p-2">
                 <Input
-                  :value="currentSkuDetails.max"
-                  @input="e => updateSkuField('max', Number(e.target.value))"
+                  :value="skuDetailsData[selectedSkuDetails?.sku || '']?.mrp"
+                  @input="e => updateSkuField('mrp', Number((e.target as HTMLInputElement).value))"
                   type="number"
-                  class="w-full py-3 px-4 bg-transparent border-0 focus:outline-none placeholder:text-gray-400 text-sm"
-                  placeholder="0"
+                  placeholder="0.00"
+                  class="w-full border-0 shadow-none focus:ring-0"
                 />
-              </div>
-            </div>
-
-            <!-- Stock Row -->
-            <div class="flex items-center border-b hover:bg-gray-50">
-              <div class="w-32 border-r p-3">
-                <div class="text-sm font-medium">Stock</div>
-              </div>
-              <div class="flex-1 p-2 flex items-center">
-                <Input
-                  :value="currentSkuDetails.stock"
-                  @input="e => updateSkuField('stock', Number(e.target.value))"
-                  type="number"
-                  class="w-full py-3 px-4 bg-transparent border-0 focus:outline-none placeholder:text-gray-400 text-sm"
-                  placeholder="0"
-                />
-                <button 
-                  @click.stop="openStockDetails(selectedSku?.sku || '')"
-                  class="px-3 py-2 hover:bg-gray-100 rounded-md"
-                >
-                  <ChevronRight class="h-4 w-4 text-gray-400" />
-                </button>
               </div>
             </div>
           </div>
@@ -1542,9 +1652,13 @@ const removeMedia = async () => {
                 </div>
                 <div class="flex-1 p-2">
                   <Input
+                    :value="skuDetailsData[selectedSkuDetails?.sku || '']?.upc"
+                    @input="e => updateSkuField('upc', (e.target as HTMLInputElement).value)"
                     type="text"
                     placeholder="Enter UPC"
                     class="w-full border-0 shadow-none focus:ring-0"
+                    tabindex="-1"
+                    :autofocus="false"
                   />
                 </div>
               </div>
@@ -1555,42 +1669,59 @@ const removeMedia = async () => {
                   <button 
                     @click="triggerSkuPrimaryFileInput"
                     class="w-12 h-12 rounded border flex items-center justify-center hover:bg-gray-50 relative overflow-hidden"
-                    :class="{ 'border-dashed border-gray-300': !skuPrimaryImage }"
+                    :class="{ 'border-dashed border-gray-300': !skuMedia[selectedSkuDetails?.sku]?.primary }"
                   >
-                    <template v-if="skuPrimaryImage">
+                    <template v-if="skuMedia[selectedSkuDetails?.sku]?.primary">
                       <img 
-                        :src="skuPrimaryImage" 
-                        class="w-full h-full object-cover"
-                        alt="Primary SKU image"
+                        v-if="skuMedia[selectedSkuDetails?.sku].primary.mediaType === 'image'"
+                        :src="skuMedia[selectedSkuDetails?.sku].primary.url" 
+                        class="w-full h-full object-cover cursor-pointer"
+                        alt="Primary SKU media"
+                        @click.stop="openSkuMediaPreview(skuMedia[selectedSkuDetails?.sku].primary, 'primary')"
                       />
+                      <div 
+                        v-else 
+                        class="w-full h-full flex items-center justify-center cursor-pointer"
+                        @click.stop="openSkuMediaPreview(skuMedia[selectedSkuDetails?.sku].primary, 'primary')"
+                      >
+                        <VideoIcon class="w-6 h-6 text-gray-400" />
+                      </div>
                     </template>
                     <ImageIcon v-else class="w-4 h-4 text-gray-400" />
                   </button>
                   <input
                     ref="skuPrimaryFileInput"
                     type="file"
-                    accept="image/*"
+                    :accept="acceptedFileTypes"
                     class="hidden"
-                    @change="handleSkuPrimaryImageUpload"
+                    @change="handleSkuPrimaryUpload"
                   />
                 </div>
                 
                 <div class="flex-1 p-2">
                   <div class="flex items-center gap-2 overflow-x-auto">
-                    <!-- Uploaded Images -->
+                    <!-- Uploaded Media -->
                     <div 
-                      v-for="(image, index) in skuAdditionalImages" 
+                      v-for="(media, index) in skuMedia[selectedSkuDetails?.sku]?.additional" 
                       :key="index"
-                      class="flex-shrink-0 w-12 h-12 rounded border overflow-hidden"
+                      class="flex-shrink-0 w-12 h-12 rounded border overflow-hidden cursor-pointer"
+                      @click="openSkuMediaPreview(media, 'additional', index)"
                     >
                       <img 
-                        :src="image" 
+                        v-if="media.mediaType === 'image'"
+                        :src="media.url" 
                         class="w-full h-full object-cover"
-                        alt="Additional SKU image"
+                        alt="Additional SKU media"
                       />
+                      <div 
+                        v-else 
+                        class="w-full h-full flex items-center justify-center"
+                      >
+                        <VideoIcon class="w-6 h-6 text-gray-400" />
+                      </div>
                     </div>
                     
-                    <!-- Add Image Button -->
+                    <!-- Add Media Button -->
                     <button 
                       @click="triggerSkuAdditionalFileInput"
                       class="flex-shrink-0 w-12 h-12 rounded border border-dashed border-gray-300 flex items-center justify-center hover:bg-gray-50"
@@ -1601,9 +1732,9 @@ const removeMedia = async () => {
                   <input
                     ref="skuAdditionalFileInput"
                     type="file"
-                    accept="image/*"
+                    :accept="acceptedFileTypes"
                     class="hidden"
-                    @change="handleSkuAdditionalImageUpload"
+                    @change="handleSkuAdditionalUpload"
                   />
                 </div>
               </div>
@@ -1615,6 +1746,8 @@ const removeMedia = async () => {
                 </div>
                 <div class="flex-1 p-2">
                   <Input
+                    :value="skuDetailsData[selectedSkuDetails?.sku || '']?.collection"
+                    @input="e => updateSkuField('collection', (e.target as HTMLInputElement).value)"
                     type="text"
                     placeholder="Enter collection"
                     class="w-full border-0 shadow-none focus:ring-0"
@@ -1629,6 +1762,8 @@ const removeMedia = async () => {
                 </div>
                 <div class="flex-1 p-2">
                   <Input
+                    :value="skuDetailsData[selectedSkuDetails?.sku || '']?.cost"
+                    @input="e => updateSkuField('cost', Number((e.target as HTMLInputElement).value))"
                     type="number"
                     placeholder="0.00"
                     class="w-full border-0 shadow-none focus:ring-0"
@@ -1643,6 +1778,8 @@ const removeMedia = async () => {
                 </div>
                 <div class="flex-1 p-2">
                   <Input
+                    :value="skuDetailsData[selectedSkuDetails?.sku || '']?.price"
+                    @input="e => updateSkuField('price', Number((e.target as HTMLInputElement).value))"
                     type="number"
                     placeholder="0.00"
                     class="w-full border-0 shadow-none focus:ring-0"
@@ -1657,6 +1794,8 @@ const removeMedia = async () => {
                 </div>
                 <div class="flex-1 p-2">
                   <Input
+                    :value="skuDetailsData[selectedSkuDetails?.sku || '']?.mrp"
+                    @input="e => updateSkuField('mrp', Number((e.target as HTMLInputElement).value))"
                     type="number"
                     placeholder="0.00"
                     class="w-full border-0 shadow-none focus:ring-0"
@@ -1968,6 +2107,23 @@ const removeMedia = async () => {
 
 :deep(.ce-conversion-toolbar) {
   border-radius: 6px !important;
+}
+
+/* Add this to your existing styles */
+:deep(input) {
+  &:focus-visible {
+    outline: none !important;
+  }
+}
+
+:deep(.input:focus) {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+:deep(.input:focus-visible) {
+  outline: none !important;
+  box-shadow: none !important;
 }
 </style>
 
