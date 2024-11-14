@@ -152,6 +152,25 @@ const saveProduct = async () => {
     const url = "https://commerce-tarframework.turso.io/v2/pipeline"
     const authToken = "eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJhIjoicnciLCJpYXQiOjE3Mjk2NzQwNjQsImlkIjoiN2ZiNTFhMTgtYjU1My00Y2M2LTkwZWItZDE0ZTcxNDI5ODlhIn0.zxIjODPlBzNcAgQQ70xZj2sI7j7RSAHpYPQUtvyoAHDb4nLGzHAPiVvnJ6qeK7-00F8A6Lz__CSPjdITPZ31BQ"
 
+    // Format options as JSON objects
+    const option1 = selectedAttributes.value['4'] && selectedOptions.value['4'].length 
+      ? JSON.stringify({ [selectedAttributes.value['4']]: selectedOptions.value['4'] })
+      : ''
+      
+    const option2 = selectedAttributes.value['5'] && selectedOptions.value['5'].length 
+      ? JSON.stringify({ [selectedAttributes.value['5']]: selectedOptions.value['5'] })
+      : ''
+      
+    const option3 = selectedAttributes.value['6'] && selectedOptions.value['6'].length 
+      ? JSON.stringify({ [selectedAttributes.value['6']]: selectedOptions.value['6'] })
+      : ''
+
+    console.log('Options formatted as:', {
+      option1: option1 ? JSON.parse(option1) : null,
+      option2: option2 ? JSON.parse(option2) : null,
+      option3: option3 ? JSON.parse(option3) : null
+    })
+
     // Prepare the SQL statement
     const sql = `
       INSERT INTO products (
@@ -180,9 +199,9 @@ const saveProduct = async () => {
       }),
       selectedUnit.value || '',
       category.value || '',
-      selectedAttributes.value['4'] || '',
-      selectedAttributes.value['5'] || '',
-      selectedAttributes.value['6'] || '',
+      option1,  // Now formatted as {"color": ["Red", "Blue"]}
+      option2,  // Now formatted as {"material": ["Cotton"]}
+      option3,  // Now formatted as {"size": ["Medium"]}
       generatedSkus.value.reduce((sum, sku) => sum + (getSkuTotalStock(sku.sku) || 0), 0),
       JSON.stringify(generatedSkus.value.map(sku => ({
         SKU: sku.sku,
@@ -199,6 +218,12 @@ const saveProduct = async () => {
         stock: getSkuTotalStock(sku.sku) || 0
       })))
     ]
+
+    console.log('Saving product with options:', {
+      option1,
+      option2,
+      option3
+    })
 
     const response = await fetch(url, {
       method: "POST",
@@ -614,15 +639,20 @@ const getAvailableAttributes = (currentRowNum: string) => {
 // Add these refs
 const showDescriptionSheet = ref(false)
 const editor = ref<EditorJS | null>(null)
-const editorData = ref<EditorData>({ blocks: [] })
+const editorData = ref<EditorData>({
+  time: Date.now(),
+  blocks: [],
+  version: '2.28.2'
+})
 
-// Add this function to initialize Editor.js
+// Update the initEditor function
 const initEditor = () => {
   if (editor.value) return
 
   editor.value = new EditorJS({
     holder: 'editor',
     placeholder: 'Start writing your product description...',
+    data: editorData.value, // Initialize with existing data
     tools: {
       header: {
         class: Header,
@@ -670,33 +700,68 @@ const initEditor = () => {
         },
       }
     },
-    data: editorData.value,
     onChange: async () => {
-      const savedData = await editor.value?.save()
-      if (savedData) {
-        editorData.value = savedData
+      try {
+        const savedData = await editor.value?.save()
+        if (savedData) {
+          editorData.value = savedData
+        }
+      } catch (error) {
+        console.error('Failed to save editor data:', error)
       }
     }
   })
 }
 
-// Add this method to handle description save
+// Update the saveDescription function
 const saveDescription = async () => {
   if (editor.value) {
     try {
       const savedData = await editor.value.save()
       editorData.value = savedData
       showDescriptionSheet.value = false
+      
+      // Clean up the editor
+      editor.value.destroy()
+      editor.value = null
     } catch (error) {
       console.error('Failed to save description:', error)
     }
   }
 }
 
-// Add cleanup function
+// Add a watch for the description sheet
+watch(showDescriptionSheet, (newValue) => {
+  if (newValue) {
+    // Sheet is opening
+    nextTick(() => {
+      initEditor()
+    })
+  } else {
+    // Sheet is closing
+    if (editor.value) {
+      editor.value.save().then(savedData => {
+        editorData.value = savedData
+        editor.value?.destroy()
+        editor.value = null
+      }).catch(error => {
+        console.error('Failed to save editor data on close:', error)
+      })
+    }
+  }
+})
+
+// Update the cleanup function
 onBeforeUnmount(() => {
-  editor.value?.destroy()
-  editor.value = null
+  if (editor.value) {
+    editor.value.save().then(savedData => {
+      editorData.value = savedData
+      editor.value?.destroy()
+      editor.value = null
+    }).catch(error => {
+      console.error('Failed to save editor data on unmount:', error)
+    })
+  }
 })
 
 // Add handler for opening description sheet
@@ -1743,7 +1808,10 @@ const openMediaPreview = (media: MediaItem, type: 'primary' | 'additional', inde
 
     <!-- Replace the existing SKU details sheet content -->
     <Sheet v-model:open="showSkuDetailsSheet">
-      <SheetContent side="bottom" class="h-[100dvh] w-full">
+      <SheetContent 
+        side="bottom" 
+        class="h-[100dvh] w-full !translate-y-0 !transition-none"
+      >
         <div class="flex flex-col h-full">
           <!-- Header -->
           <div class="p-4 border-b">
@@ -1946,7 +2014,10 @@ const openMediaPreview = (media: MediaItem, type: 'primary' | 'additional', inde
 
     <!-- Add this new sheet component -->
     <Sheet v-model:open="showStockManagementSheet">
-      <SheetContent side="bottom" class="h-[100dvh] w-full">
+      <SheetContent 
+        side="bottom" 
+        class="h-[100dvh] w-full !translate-y-0 !transition-none"
+      >
         <div class="flex flex-col h-full">
           <!-- Header -->
           <div class="p-4 border-b">
@@ -2237,6 +2308,56 @@ const openMediaPreview = (media: MediaItem, type: 'primary' | 'additional', inde
   outline: none !important;
   box-shadow: none !important;
 }
+
+/* Add these styles to remove animations */
+:deep(.sheet-content[data-state='open']) {
+  animation: none !important;
+  transform: translateY(0) !important;
+}
+
+:deep(.sheet-content[data-state='closed']) {
+  animation: none !important;
+}
+
+:deep(.sheet-overlay[data-state='open']) {
+  animation: none !important;
+  opacity: 0.4 !important;
+}
+
+:deep(.sheet-overlay[data-state='closed']) {
+  animation: none !important;
+}
+
+/* Replace the previous animation override styles with these */
+:deep(.sheet-content) {
+  transition: none !important;
+  animation: none !important;
+  transform: translateY(0) !important;
+}
+
+:deep(.sheet-overlay) {
+  transition: none !important;
+  animation: none !important;
+}
+
+/* Disable all transitions on the sheet */
+:deep([data-state]) {
+  transition: none !important;
+}
+
+/* Force immediate positioning */
+:deep(.fixed) {
+  transition: none !important;
+  transform: translateY(0) !important;
+}
+
+/* Override any transform animations */
+:deep(*) {
+  transform: none !important;
+  transition: none !important;
+}
+
+/* Rest of your existing styles... */
 </style>
 
 
