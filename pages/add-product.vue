@@ -545,8 +545,6 @@ const handleOptionSelect = (rowNum: string, value: string) => {
     } else {
       selectedOptions.value[rowNum].splice(index, 1)
     }
-  } else {
-    selectedOptions.value[rowNum] = [value]
   }
 }
 
@@ -866,11 +864,28 @@ const openSkuDetailsSheet = (sku: GeneratedSku) => {
   showSkuDetailsSheet.value = true
 }
 
-// Add method to handle field updates
+// Add this interface for input events
+interface InputEvent extends Event {
+  target: HTMLInputElement;
+}
+
+// Update the updateSkuField method
 const updateSkuField = (field: keyof SkuDetails, value: string | number) => {
   if (selectedSkuDetails.value) {
     const sku = selectedSkuDetails.value.sku
-    skuDetailsData.value[sku][field] = value
+    if (!skuDetailsData.value[sku]) {
+      skuDetailsData.value[sku] = {
+        upc: '',
+        collection: '',
+        cost: 0,
+        price: 0,
+        mrp: 0
+      }
+    }
+    skuDetailsData.value[sku] = {
+      ...skuDetailsData.value[sku],
+      [field]: value
+    }
   }
 }
 
@@ -1557,13 +1572,11 @@ const openMediaPreview = (media: MediaItem, type: 'primary' | 'additional', inde
               </div>
               <div class="flex-1 p-2">
                 <Input
-                  :value="skuDetailsData[selectedSkuDetails?.sku || '']?.upc"
-                  @input="e => updateSkuField('upc', (e.target as HTMLInputElement).value)"
+                  :model-value="skuDetailsData[selectedSkuDetails?.sku || '']?.upc"
+                  @update:model-value="value => updateSkuField('upc', value)"
                   type="text"
                   placeholder="Enter UPC"
                   class="w-full border-0 shadow-none focus:ring-0"
-                  tabindex="-1"
-                  :autofocus="false"
                 />
               </div>
             </div>
@@ -1658,8 +1671,8 @@ const openMediaPreview = (media: MediaItem, type: 'primary' | 'additional', inde
               </div>
               <div class="flex-1 p-2">
                 <Input
-                  :value="skuDetailsData[selectedSkuDetails?.sku || '']?.collection"
-                  @input="e => updateSkuField('collection', (e.target as HTMLInputElement).value)"
+                  :model-value="skuDetailsData[selectedSkuDetails?.sku || '']?.collection"
+                  @update:model-value="value => updateSkuField('collection', value)"
                   type="text"
                   placeholder="Enter collection"
                   class="w-full border-0 shadow-none focus:ring-0"
@@ -1674,8 +1687,8 @@ const openMediaPreview = (media: MediaItem, type: 'primary' | 'additional', inde
               </div>
               <div class="flex-1 p-2">
                 <Input
-                  :value="skuDetailsData[selectedSkuDetails?.sku || '']?.cost"
-                  @input="e => updateSkuField('cost', Number((e.target as HTMLInputElement).value))"
+                  :model-value="skuDetailsData[selectedSkuDetails?.sku || '']?.cost"
+                  @update:model-value="value => updateSkuField('cost', Number(value))"
                   type="number"
                   placeholder="0.00"
                   class="w-full border-0 shadow-none focus:ring-0"
@@ -1690,8 +1703,8 @@ const openMediaPreview = (media: MediaItem, type: 'primary' | 'additional', inde
               </div>
               <div class="flex-1 p-2">
                 <Input
-                  :value="skuDetailsData[selectedSkuDetails?.sku || '']?.price"
-                  @input="e => updateSkuField('price', Number((e.target as HTMLInputElement).value))"
+                  :model-value="skuDetailsData[selectedSkuDetails?.sku || '']?.price"
+                  @update:model-value="value => updateSkuField('price', Number(value))"
                   type="number"
                   placeholder="0.00"
                   class="w-full border-0 shadow-none focus:ring-0"
@@ -1706,8 +1719,8 @@ const openMediaPreview = (media: MediaItem, type: 'primary' | 'additional', inde
               </div>
               <div class="flex-1 p-2">
                 <Input
-                  :value="skuDetailsData[selectedSkuDetails?.sku || '']?.mrp"
-                  @input="e => updateSkuField('mrp', Number((e.target as HTMLInputElement).value))"
+                  :model-value="skuDetailsData[selectedSkuDetails?.sku || '']?.mrp"
+                  @update:model-value="value => updateSkuField('mrp', Number(value))"
                   type="number"
                   placeholder="0.00"
                   class="w-full border-0 shadow-none focus:ring-0"
@@ -1832,13 +1845,11 @@ const openMediaPreview = (media: MediaItem, type: 'primary' | 'additional', inde
                 </div>
                 <div class="flex-1 p-2">
                   <Input
-                    :value="skuDetailsData[selectedSkuDetails?.sku || '']?.upc"
-                    @input="e => updateSkuField('upc', (e.target as HTMLInputElement).value)"
+                    :model-value="skuDetailsData[selectedSkuDetails?.sku || '']?.upc"
+                    @update:model-value="value => updateSkuField('upc', value)"
                     type="text"
                     placeholder="Enter UPC"
                     class="w-full border-0 shadow-none focus:ring-0"
-                    tabindex="-1"
-                    :autofocus="false"
                   />
                 </div>
               </div>
@@ -1926,8 +1937,8 @@ const openMediaPreview = (media: MediaItem, type: 'primary' | 'additional', inde
                 </div>
                 <div class="flex-1 p-2">
                   <Input
-                    :value="skuDetailsData[selectedSkuDetails?.sku || '']?.collection"
-                    @input="e => updateSkuField('collection', (e.target as HTMLInputElement).value)"
+                    :model-value="skuDetailsData[selectedSkuDetails?.sku || '']?.collection"
+                    @update:model-value="value => updateSkuField('collection', value)"
                     type="text"
                     placeholder="Enter collection"
                     class="w-full border-0 shadow-none focus:ring-0"
@@ -1942,8 +1953,8 @@ const openMediaPreview = (media: MediaItem, type: 'primary' | 'additional', inde
                 </div>
                 <div class="flex-1 p-2">
                   <Input
-                    :value="skuDetailsData[selectedSkuDetails?.sku || '']?.cost"
-                    @input="e => updateSkuField('cost', Number((e.target as HTMLInputElement).value))"
+                    :model-value="skuDetailsData[selectedSkuDetails?.sku || '']?.cost"
+                    @update:model-value="value => updateSkuField('cost', Number(value))"
                     type="number"
                     placeholder="0.00"
                     class="w-full border-0 shadow-none focus:ring-0"
@@ -1958,8 +1969,8 @@ const openMediaPreview = (media: MediaItem, type: 'primary' | 'additional', inde
                 </div>
                 <div class="flex-1 p-2">
                   <Input
-                    :value="skuDetailsData[selectedSkuDetails?.sku || '']?.price"
-                    @input="e => updateSkuField('price', Number((e.target as HTMLInputElement).value))"
+                    :model-value="skuDetailsData[selectedSkuDetails?.sku || '']?.price"
+                    @update:model-value="value => updateSkuField('price', Number(value))"
                     type="number"
                     placeholder="0.00"
                     class="w-full border-0 shadow-none focus:ring-0"
@@ -1974,8 +1985,8 @@ const openMediaPreview = (media: MediaItem, type: 'primary' | 'additional', inde
                 </div>
                 <div class="flex-1 p-2">
                   <Input
-                    :value="skuDetailsData[selectedSkuDetails?.sku || '']?.mrp"
-                    @input="e => updateSkuField('mrp', Number((e.target as HTMLInputElement).value))"
+                    :model-value="skuDetailsData[selectedSkuDetails?.sku || '']?.mrp"
+                    @update:model-value="value => updateSkuField('mrp', Number(value))"
                     type="number"
                     placeholder="0.00"
                     class="w-full border-0 shadow-none focus:ring-0"
