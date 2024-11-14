@@ -122,13 +122,126 @@ interface SkuDetails {
   mrp: number
 }
 
+// Add these interfaces near the top
+interface EditorBlock {
+  data: {
+    text?: string;
+    [key: string]: any;
+  };
+  [key: string]: any;
+}
+
+interface EditorData {
+  blocks: EditorBlock[];
+  [key: string]: any;
+}
+
 const goBack = () => {
   navigateTo('/products')
 }
 
-const saveProduct = () => {
-  // Add save functionality here
-  goBack()
+// Add this ref
+const isSaving = ref(false)
+
+// Update the saveProduct function
+const saveProduct = async () => {
+  if (isSaving.value) return
+  
+  isSaving.value = true
+  try {
+    const url = "https://commerce-tarframework.turso.io/v2/pipeline"
+    const authToken = "eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJhIjoicnciLCJpYXQiOjE3Mjk2NzQwNjQsImlkIjoiN2ZiNTFhMTgtYjU1My00Y2M2LTkwZWItZDE0ZTcxNDI5ODlhIn0.zxIjODPlBzNcAgQQ70xZj2sI7j7RSAHpYPQUtvyoAHDb4nLGzHAPiVvnJ6qeK7-00F8A6Lz__CSPjdITPZ31BQ"
+
+    // Prepare the SQL statement
+    const sql = `
+      INSERT INTO products (
+        type,
+        product_name,
+        description,
+        medias,
+        unit,
+        category,
+        option1,
+        option2,
+        option3,
+        totalstock,
+        items
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `.trim()
+
+    // Prepare the values
+    const values = [
+      selectedType.value || '',
+      productName.value || '',
+      editorData.value?.blocks?.map(block => block?.data?.text || '').join('\n') || '',
+      JSON.stringify({
+        primary: primaryMedia.value,
+        additional: additionalMedia.value
+      }),
+      selectedUnit.value || '',
+      category.value || '',
+      selectedAttributes.value['4'] || '',
+      selectedAttributes.value['5'] || '',
+      selectedAttributes.value['6'] || '',
+      generatedSkus.value.reduce((sum, sku) => sum + (getSkuTotalStock(sku.sku) || 0), 0),
+      JSON.stringify(generatedSkus.value.map(sku => ({
+        SKU: sku.sku,
+        desc: '',
+        upc: skuDetailsData.value[sku.sku]?.upc || '',
+        medias: JSON.stringify({
+          primary: skuMedia.value[sku.sku]?.primary || null,
+          additional: skuMedia.value[sku.sku]?.additional || []
+        }),
+        collection: skuDetailsData.value[sku.sku]?.collection || '',
+        cost: Number(skuDetailsData.value[sku.sku]?.cost || 0),
+        price: Number(skuDetailsData.value[sku.sku]?.price || 0),
+        MRP: Number(skuDetailsData.value[sku.sku]?.mrp || 0),
+        stock: getSkuTotalStock(sku.sku) || 0
+      })))
+    ]
+
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${authToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        requests: [
+          {
+            type: "execute",
+            stmt: {
+              sql,
+              args: values.map(value => ({
+                type: typeof value === 'number' ? 'integer' : 'text',
+                value: String(value)
+              }))
+            }
+          }
+        ]
+      }),
+    })
+
+    if (!response.ok) {
+      const errorText = await response.text()
+      console.error('Server response:', errorText)
+      throw new Error(`HTTP error! status: ${response.status}`)
+    }
+
+    const result = await response.json()
+    
+    if (result.error) {
+      throw new Error(result.error)
+    }
+
+    // Navigate back to products page after successful save
+    navigateTo('/products')
+
+  } catch (error) {
+    console.error('Failed to save product:', error)
+  } finally {
+    isSaving.value = false
+  }
 }
 
 const selectedType = ref('I')
@@ -501,9 +614,7 @@ const getAvailableAttributes = (currentRowNum: string) => {
 // Add these refs
 const showDescriptionSheet = ref(false)
 const editor = ref<EditorJS | null>(null)
-const editorData = ref({
-  blocks: []
-})
+const editorData = ref<EditorData>({ blocks: [] })
 
 // Add this function to initialize Editor.js
 const initEditor = () => {
@@ -648,7 +759,7 @@ const handleStockUpdate = () => {
 
 const openSkuDetails = (sku: GeneratedSku) => {
   selectedSku.value = sku
-  showStockSheet.value = true
+  showSkuSheet.value = true
 }
 
 // Add these refs
@@ -948,8 +1059,9 @@ const openMediaPreview = (media: MediaItem, type: 'primary' | 'additional', inde
           variant="ghost" 
           @click="saveProduct"
           class="px-4"
+          :disabled="isSaving"
         >
-          Save
+          {{ isSaving ? 'Saving...' : 'Save' }}
         </Button>
       </div>
     </header>

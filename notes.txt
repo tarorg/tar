@@ -1,0 +1,20 @@
+Here are all the drawer (Sheet) components in the page:
+Description Sheet
+Triggered by clicking the chevron button next to product name
+Contains the EditorJS rich text editor for product description
+Media Preview Sheet
+Opens when clicking on any media (image/video)
+Shows full preview of media with remove option at bottom
+SKU Details Sheet
+Opens when clicking on a SKU row
+Contains UPC, media, collection, cost, price, and MRP fields
+Stock Management Sheet
+Opens when clicking on stock number
+Shows stock details with group, stock, DOM, and shelf life
+Date Picker Sheet
+Opens when clicking on DOM (Date of Manufacturing) field
+Shows date picker for selecting DOM
+Confirmation Sheet
+Opens when changing attributes that have values selected
+Confirms if user wants to change attribute and reset values
+These drawers are implemented using the Sheet component and appear from the bottom of the screen.
