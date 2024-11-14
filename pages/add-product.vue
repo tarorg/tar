@@ -17,6 +17,7 @@ import {
   Image as ImageIcon,
   ChevronDown,
   ChevronRight,
+  Video as VideoIcon,
 } from 'lucide-vue-next'
 import { initDB, getAttributes, getOptions, dbStatus } from '@/services/indexedDB'
 import {
@@ -92,6 +93,26 @@ interface UploadResponse {
   message?: string
 }
 
+// Add this interface for media type
+interface MediaItem {
+  url: string
+  mediaType: 'image' | 'video'
+}
+
+// Update the MediaItem interface to include mediaType
+interface MediaItem {
+  url: string
+  mediaType: 'image' | 'video'
+}
+
+// Update the selectedMediaPreview interface
+interface MediaPreview {
+  url: string
+  mediaType: 'image' | 'video'
+  type: 'primary' | 'additional'
+  index?: number
+}
+
 const goBack = () => {
   navigateTo('/products')
 }
@@ -101,7 +122,7 @@ const saveProduct = () => {
   goBack()
 }
 
-const selectedType = ref('G')
+const selectedType = ref('I')
 const productName = ref('')
 const primaryImage = ref<string>('')
 const additionalImages = ref<string[]>([])
@@ -115,15 +136,27 @@ const toggleType = () => {
 // Add this constant for the base URL
 const R2_BASE_URL = 'https://pub-645e6a6aec9743558410b2ba6cedc346.r2.dev'
 
+// Update these refs to store media type
+const primaryMedia = ref<MediaItem | null>(null)
+const additionalMedia = ref<MediaItem[]>([])
+
+// Update the file input accept attribute to include videos
+const acceptedFileTypes = "image/*,video/*"
+
+// Add helper function to determine media type
+const getMediaType = (file: File): 'image' | 'video' => {
+  return file.type.startsWith('video/') ? 'video' : 'image'
+}
+
 // Update the handlePrimaryImageUpload function
 const handlePrimaryImageUpload = async (event: Event) => {
   const input = event.target as HTMLInputElement
   if (input.files && input.files[0]) {
     try {
       const file = input.files[0]
+      const mediaType = getMediaType(file)
       const formData = new FormData()
       
-      // Generate a unique filename using timestamp and original extension
       const ext = file.name.split('.').pop()
       const filename = `${Date.now()}-${Math.random().toString(36).substring(7)}.${ext}`
       
@@ -135,31 +168,30 @@ const handlePrimaryImageUpload = async (event: Event) => {
         body: formData
       })
 
-      // First check if the response is ok
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`)
       }
 
-      // Try to parse the response as JSON
       const result = await response.text()
       
-      // If upload was successful, the file should be available at R2_BASE_URL
-      primaryImage.value = `${R2_BASE_URL}/${filename}`
-      console.log('Upload successful, image URL:', primaryImage.value)
+      primaryMedia.value = {
+        url: `${R2_BASE_URL}/${filename}`,
+        mediaType
+      }
 
     } catch (error) {
-      console.error('Failed to upload image:', error)
-      // You might want to show an error message to the user here
+      console.error('Failed to upload media:', error)
     }
   }
 }
 
-// Update the handleAdditionalImageUpload function similarly
+// Update the handleAdditionalImageUpload function
 const handleAdditionalImageUpload = async (event: Event) => {
   const input = event.target as HTMLInputElement
   if (input.files && input.files[0]) {
     try {
       const file = input.files[0]
+      const mediaType = getMediaType(file)
       const formData = new FormData()
       
       const ext = file.name.split('.').pop()
@@ -177,16 +209,15 @@ const handleAdditionalImageUpload = async (event: Event) => {
         throw new Error(`HTTP error! status: ${response.status}`)
       }
 
-      // Try to parse the response as text
       const result = await response.text()
       
-      // If upload was successful, add the URL to additional images
-      additionalImages.value.push(`${R2_BASE_URL}/${filename}`)
-      console.log('Upload successful, image URL:', `${R2_BASE_URL}/${filename}`)
+      additionalMedia.value.push({
+        url: `${R2_BASE_URL}/${filename}`,
+        mediaType
+      })
 
     } catch (error) {
-      console.error('Failed to upload image:', error)
-      // You might want to show an error message to the user here
+      console.error('Failed to upload media:', error)
     }
   }
 }
@@ -769,6 +800,56 @@ const openStockManagementSheet = (sku: GeneratedSku) => {
 const getSkuTotalStock = (sku: string) => {
   return stockDetails.value[sku]?.rows.reduce((total, row) => total + (row.stock || 0), 0) || 0
 }
+
+// Add these refs for media preview
+const showMediaPreviewSheet = ref(false)
+const selectedMediaPreview = ref<MediaPreview | null>(null)
+
+// Add this function to handle media preview
+const openMediaPreview = (media: MediaItem, type: 'primary' | 'additional', index?: number) => {
+  selectedMediaPreview.value = {
+    url: media.url,
+    mediaType: media.mediaType,
+    type,
+    index
+  }
+  showMediaPreviewSheet.value = true
+}
+
+// Update the removeMedia function
+const removeMedia = async () => {
+  if (!selectedMediaPreview.value) return
+
+  try {
+    // Extract filename from URL
+    const filename = selectedMediaPreview.value.url.split('/').pop()
+    if (!filename) throw new Error('Invalid file URL')
+
+    // Delete from R2 using the correct endpoint format
+    const response = await fetch(`https://par.wetarteam.workers.dev/${filename}`, {
+      method: 'DELETE'
+    })
+
+    if (!response.ok) {
+      throw new Error('Failed to delete file')
+    }
+
+    // Remove from local state
+    if (selectedMediaPreview.value.type === 'primary') {
+      primaryMedia.value = null
+    } else if (selectedMediaPreview.value.index !== undefined) {
+      additionalMedia.value.splice(selectedMediaPreview.value.index, 1)
+    }
+
+    // Close preview sheet
+    showMediaPreviewSheet.value = false
+    selectedMediaPreview.value = null
+
+  } catch (error) {
+    console.error('Failed to remove media:', error)
+    // You might want to show an error message to the user here
+  }
+}
 </script>
 
 <template>
@@ -884,21 +965,30 @@ const getSkuTotalStock = (sku: string) => {
               <button 
                 @click="triggerPrimaryFileInput"
                 class="w-12 h-12 rounded border flex items-center justify-center hover:bg-gray-50 relative overflow-hidden"
-                :class="{ 'border-dashed border-gray-300': !primaryImage }"
+                :class="{ 'border-dashed border-gray-300': !primaryMedia }"
               >
-                <template v-if="primaryImage">
+                <template v-if="primaryMedia">
                   <img 
-                    :src="primaryImage" 
-                    class="w-full h-full object-cover"
-                    alt="Primary image"
+                    v-if="primaryMedia.mediaType === 'image'"
+                    :src="primaryMedia.url" 
+                    class="w-full h-full object-cover cursor-pointer"
+                    alt="Primary media"
+                    @click.stop="openMediaPreview(primaryMedia, 'primary')"
                   />
+                  <div 
+                    v-else 
+                    class="w-full h-full flex items-center justify-center cursor-pointer"
+                    @click.stop="openMediaPreview(primaryMedia, 'primary')"
+                  >
+                    <VideoIcon class="w-6 h-6 text-gray-400" />
+                  </div>
                 </template>
                 <ImageIcon v-else class="w-4 h-4 text-gray-400" />
               </button>
               <input
                 ref="primaryFileInput"
                 type="file"
-                accept="image/*"
+                :accept="acceptedFileTypes"
                 class="hidden"
                 @change="handlePrimaryImageUpload"
               />
@@ -907,20 +997,28 @@ const getSkuTotalStock = (sku: string) => {
             <!-- Additional Images Cell -->
             <div class="flex-1 p-2">
               <div class="flex items-center gap-2 overflow-x-auto">
-                <!-- Uploaded Images -->
+                <!-- Uploaded Media -->
                 <div 
-                  v-for="(image, index) in additionalImages" 
+                  v-for="(media, index) in additionalMedia" 
                   :key="index"
-                  class="flex-shrink-0 w-12 h-12 rounded border overflow-hidden"
+                  class="flex-shrink-0 w-12 h-12 rounded border overflow-hidden cursor-pointer"
+                  @click="openMediaPreview(media, 'additional', index)"
                 >
                   <img 
-                    :src="image" 
+                    v-if="media.mediaType === 'image'"
+                    :src="media.url" 
                     class="w-full h-full object-cover"
-                    alt="Additional image"
+                    alt="Additional media"
                   />
+                  <div 
+                    v-else 
+                    class="w-full h-full flex items-center justify-center"
+                  >
+                    <VideoIcon class="w-6 h-6 text-gray-400" />
+                  </div>
                 </div>
                 
-                <!-- Add Image Button -->
+                <!-- Add Media Button -->
                 <button 
                   @click="triggerAdditionalFileInput"
                   class="flex-shrink-0 w-12 h-12 rounded border border-dashed border-gray-300 flex items-center justify-center hover:bg-gray-50"
@@ -931,7 +1029,7 @@ const getSkuTotalStock = (sku: string) => {
               <input
                 ref="additionalFileInput"
                 type="file"
-                accept="image/*"
+                :accept="acceptedFileTypes"
                 class="hidden"
                 @change="handleAdditionalImageUpload"
               />
@@ -1672,6 +1770,39 @@ const getSkuTotalStock = (sku: string) => {
             <Button class="w-full" @click="showStockManagementSheet = false">
               Save Changes
             </Button>
+          </div>
+        </div>
+      </SheetContent>
+    </Sheet>
+
+    <!-- Replace the Media Preview Sheet -->
+    <Sheet v-model:open="showMediaPreviewSheet">
+      <SheetContent side="bottom" class="h-[80vh]">
+        <div class="relative h-full flex flex-col">
+          <!-- Media preview -->
+          <div class="flex-1 flex items-center justify-center">
+            <img 
+              v-if="selectedMediaPreview?.mediaType === 'image'"
+              :src="selectedMediaPreview.url"
+              class="max-h-full max-w-full object-contain"
+              alt="Media preview"
+            />
+            <video
+              v-else-if="selectedMediaPreview?.mediaType === 'video'"
+              :src="selectedMediaPreview.url"
+              controls
+              class="max-h-full max-w-full"
+            />
+          </div>
+
+          <!-- Bottom bar with remove button -->
+          <div class="p-4 border-t bg-white">
+            <button 
+              @click="removeMedia"
+              class="w-full text-sm text-gray-500 hover:text-gray-700 py-2"
+            >
+              remove
+            </button>
           </div>
         </div>
       </SheetContent>
