@@ -201,7 +201,7 @@ interface SkuDetails {
   mrp: number;
 }
 
-// Fetch product data
+// Update the fetchProduct function to sync options and SKUs
 const fetchProduct = async () => {
   try {
     isLoading.value = true
@@ -256,13 +256,67 @@ const fetchProduct = async () => {
       updated_at: productData[13].value
     }
 
-    // Sync form data with product data
+    // Sync basic form data
     selectedType.value = product.value.type
     productName.value = product.value.product_name
     primaryMedia.value = product.value.medias.primary
     additionalMedia.value = product.value.medias.additional
     selectedUnit.value = product.value.unit
     category.value = product.value.category
+
+    // Sync options from option1, option2, option3
+    if (product.value.option1) {
+      const [attr1, values1] = Object.entries(product.value.option1)[0]
+      selectedAttributes.value['4'] = attr1
+      selectedOptions.value['4'] = Array.isArray(values1) ? values1 : [values1]
+    }
+    if (product.value.option2) {
+      const [attr2, values2] = Object.entries(product.value.option2)[0]
+      selectedAttributes.value['5'] = attr2
+      selectedOptions.value['5'] = Array.isArray(values2) ? values2 : [values2]
+    }
+    if (product.value.option3) {
+      const [attr3, values3] = Object.entries(product.value.option3)[0]
+      selectedAttributes.value['6'] = attr3
+      selectedOptions.value['6'] = Array.isArray(values3) ? values3 : [values3]
+    }
+
+    // Sync SKU details and stock
+    product.value.items.forEach(item => {
+      // Initialize SKU details
+      skuDetailsData.value[item.SKU] = {
+        upc: item.upc,
+        collection: item.collection,
+        cost: item.cost,
+        price: item.price,
+        mrp: item.MRP
+      }
+
+      // Initialize stock details with a single row
+      stockDetails.value[item.SKU] = {
+        rows: [{
+          group: '001',
+          stock: item.stock,
+          dom: '',
+          shelfLife: ''
+        }]
+      }
+
+      // Initialize SKU media if it exists
+      try {
+        const mediaData = JSON.parse(item.medias)
+        skuMedia.value[item.SKU] = {
+          primary: mediaData.primary,
+          additional: mediaData.additional || []
+        }
+      } catch (e) {
+        console.error('Failed to parse SKU media:', e)
+        skuMedia.value[item.SKU] = {
+          primary: null,
+          additional: []
+        }
+      }
+    })
 
   } catch (error) {
     console.error('Failed to fetch product:', error)
@@ -272,14 +326,46 @@ const fetchProduct = async () => {
   }
 }
 
-// Save product changes
+// Update the saveProduct function
 const saveProduct = async () => {
   if (!product.value || isSaving.value) return
   
   try {
     isSaving.value = true
 
-    // Update the product value with form data
+    // Create option objects from selected attributes and options
+    const option1 = selectedAttributes.value['4'] && selectedOptions.value['4'].length 
+      ? { [selectedAttributes.value['4']]: selectedOptions.value['4'] }
+      : null
+      
+    const option2 = selectedAttributes.value['5'] && selectedOptions.value['5'].length 
+      ? { [selectedAttributes.value['5']]: selectedOptions.value['5'] }
+      : null
+      
+    const option3 = selectedAttributes.value['6'] && selectedOptions.value['6'].length 
+      ? { [selectedAttributes.value['6']]: selectedOptions.value['6'] }
+      : null
+
+    // Map generated SKUs to items with their details
+    const items = generatedSkus.value.map(sku => ({
+      SKU: sku.sku,
+      desc: sku.combination.join(', '),
+      upc: skuDetailsData.value[sku.sku]?.upc || '',
+      medias: JSON.stringify({
+        primary: skuMedia.value[sku.sku]?.primary || null,
+        additional: skuMedia.value[sku.sku]?.additional || []
+      }),
+      collection: skuDetailsData.value[sku.sku]?.collection || '',
+      cost: Number(skuDetailsData.value[sku.sku]?.cost || 0),
+      price: Number(skuDetailsData.value[sku.sku]?.price || 0),
+      MRP: Number(skuDetailsData.value[sku.sku]?.mrp || 0),
+      stock: getSkuTotalStock(sku.sku) || 0
+    }))
+
+    // Calculate total stock from all SKUs
+    const totalstock = items.reduce((sum, item) => sum + item.stock, 0)
+
+    // Update the product value with all changes
     product.value = {
       ...product.value,
       type: selectedType.value,
@@ -290,6 +376,11 @@ const saveProduct = async () => {
       },
       unit: selectedUnit.value,
       category: category.value,
+      option1: option1 ? JSON.stringify(option1) : null,
+      option2: option2 ? JSON.stringify(option2) : null,
+      option3: option3 ? JSON.stringify(option3) : null,
+      totalstock,
+      items
     }
 
     const url = "https://commerce-tarframework.turso.io/v2/pipeline"
@@ -325,9 +416,9 @@ const saveProduct = async () => {
               { type: 'text', value: JSON.stringify(product.value.medias) },
               { type: 'text', value: product.value.unit },
               { type: 'text', value: product.value.category },
-              { type: 'text', value: product.value.option1 ? JSON.stringify(product.value.option1) : null },
-              { type: 'text', value: product.value.option2 ? JSON.stringify(product.value.option2) : null },
-              { type: 'text', value: product.value.option3 ? JSON.stringify(product.value.option3) : null },
+              { type: 'text', value: product.value.option1 },
+              { type: 'text', value: product.value.option2 },
+              { type: 'text', value: product.value.option3 },
               { type: 'integer', value: String(product.value.totalstock) },
               { type: 'text', value: JSON.stringify(product.value.items) },
               { type: 'integer', value: String(product.value.id) }
@@ -613,6 +704,12 @@ onMounted(async () => {
     loadError.value = 'Failed to load data. Please try again.'
   }
 })
+
+// Add this ref for tracking pending changes
+const pendingAttributeChange = ref<{
+  rowNum: string;
+  newValue: string;
+} | null>(null)
 </script>
 
 <template>
