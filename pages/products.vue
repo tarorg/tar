@@ -3,6 +3,7 @@ import { ref, onMounted } from 'vue'
 import { Button } from '@/components/ui/button'
 import { Plus, Video as VideoIcon } from 'lucide-vue-next'
 import { Input } from '@/components/ui/input'
+import AppHeader from '@/components/AppHeader.vue'
 
 interface Product {
   id: number
@@ -190,6 +191,9 @@ onMounted(() => {
 
 <template>
   <div class="flex flex-col h-screen">
+    <!-- Add AppHeader at the top -->
+    <AppHeader />
+
     <!-- Search Bar with Add Button -->
     <div class="p-4 flex gap-2 items-center">
       <div class="flex-1 relative">
