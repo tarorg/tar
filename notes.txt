@@ -18,3 +18,45 @@ Confirmation Sheet
 Opens when changing attributes that have values selected
 Confirms if user wants to change attribute and reset values
 These drawers are implemented using the Sheet component and appear from the bottom of the screen.
+
+table "product"
+
+type
+product name
+description
+medias 
+unit
+category
+option1
+option2
+option3
+totalstock
+items
+{ 
+
+SKU : " ",
+desc : " ",
+upc : " ",
+medias : "  ",
+collection : " ",
+cost : " ",
+price : " ",
+MRP : " ",
+stock : " "
+
+}
+
+{ 
+
+SKU : " ",
+desc : " ",
+upc : " ",
+medias : "  ",
+collection : " ",
+cost : " ",
+price : " ",
+MRP : " ",
+stock : " "
+
+}
+

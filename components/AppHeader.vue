@@ -23,27 +23,40 @@ import {
   Triangle,
   Circle,
   Layers,
+  FolderClosed,
 } from 'lucide-vue-next'
 
 const menuSearchQuery = ref('')
 
 const menuItems = [
-  { icon: User, label: 'Profile', link: '/profile' },
-  { icon: CreditCard, label: 'Billing', link: '/billing' },
+  { icon: ShoppingCart, label: 'Sales', link: '/sales' },
+  {
+    icon: Package, 
+    label: 'Inventory',
+    submenu: [
+      { icon: Package, label: 'Products', link: '/products' },
+      { icon: Layers, label: 'Stocks', link: '/stocks' },
+      { icon: Settings, label: 'Options', link: '/options' },
+      { icon: FolderClosed, label: 'Collections', link: '/collections' }
+    ]
+  },
+  { icon: BarChart, label: 'Reports', link: '/reports' },
   { icon: Settings, label: 'Settings', link: '/settings' },
-  { icon: LayoutDashboard, label: 'Home', link: '/' },
-  { icon: ShoppingCart, label: 'Orders', link: '/orders' },
-  { icon: Package, label: 'Products', link: '/products' },
-  { icon: Layers, label: 'Instances', link: '/instances' },
-  { icon: Users, label: 'Customers', link: '/customers' },
-  { icon: BarChart, label: 'Analytics', link: '/analytics' },
-  { icon: Settings, label: 'Options', link: '/options' },
 ]
 
 const filteredMenuItems = computed(() => {
-  return menuItems.filter(item => 
-    item.label.toLowerCase().includes(menuSearchQuery.value.toLowerCase())
-  )
+  const searchTerm = menuSearchQuery.value.toLowerCase()
+  return menuItems.filter(item => {
+    // Check main item
+    if (item.label.toLowerCase().includes(searchTerm)) return true
+    // Check submenu items if they exist
+    if (item.submenu) {
+      return item.submenu.some(subItem => 
+        subItem.label.toLowerCase().includes(searchTerm)
+      )
+    }
+    return false
+  })
 })
 </script>
 
@@ -71,16 +84,28 @@ const filteredMenuItems = computed(() => {
           <DropdownMenuSeparator />
           <DropdownMenuGroup class="overflow-y-auto max-h-[calc(100vh-10rem)] md:max-h-[400px]">
             <template v-for="item in filteredMenuItems" :key="item.label">
-              <NuxtLink v-if="item.link" :to="item.link" class="block">
+              <template v-if="!item.submenu">
+                <NuxtLink v-if="item.link" :to="item.link" class="block">
+                  <DropdownMenuItem class="text-xl py-2">
+                    <component :is="item.icon" class="mr-2 h-5 w-5" />
+                    <span>{{ item.label }}</span>
+                  </DropdownMenuItem>
+                </NuxtLink>
+              </template>
+              <template v-else>
                 <DropdownMenuItem class="text-xl py-2">
                   <component :is="item.icon" class="mr-2 h-5 w-5" />
                   <span>{{ item.label }}</span>
                 </DropdownMenuItem>
-              </NuxtLink>
-              <DropdownMenuItem v-else class="text-xl py-2">
-                <component :is="item.icon" class="mr-2 h-5 w-5" />
-                <span>{{ item.label }}</span>
-              </DropdownMenuItem>
+                <template v-for="subItem in item.submenu" :key="subItem.label">
+                  <NuxtLink :to="subItem.link" class="block pl-10">
+                    <DropdownMenuItem class="text-xl py-2">
+                      <component :is="subItem.icon" class="mr-2 h-5 w-5" />
+                      <span>{{ subItem.label }}</span>
+                    </DropdownMenuItem>
+                  </NuxtLink>
+                </template>
+              </template>
             </template>
           </DropdownMenuGroup>
         </DropdownMenuContent>
@@ -101,7 +126,6 @@ const filteredMenuItems = computed(() => {
 </template>
 
 <style scoped>
-/* Add smooth scrolling for the menu group */
 .overflow-y-auto {
   -webkit-overflow-scrolling: touch;
 }
