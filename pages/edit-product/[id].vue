@@ -710,6 +710,233 @@ const pendingAttributeChange = ref<{
   rowNum: string;
   newValue: string;
 } | null>(null)
+
+// Add these methods for SKU details management
+
+// Method to update SKU fields
+const updateSkuField = (field: keyof SkuDetails, value: string | number) => {
+  if (selectedSkuDetails.value) {
+    const sku = selectedSkuDetails.value.sku
+    if (!skuDetailsData.value[sku]) {
+      skuDetailsData.value[sku] = {
+        upc: '',
+        collection: '',
+        cost: 0,
+        price: 0,
+        mrp: 0
+      }
+    }
+    skuDetailsData.value[sku] = {
+      ...skuDetailsData.value[sku],
+      [field]: value
+    }
+  }
+}
+
+// Methods for SKU media handling
+const skuPrimaryFileInput = ref<HTMLInputElement | null>(null)
+const skuAdditionalFileInput = ref<HTMLInputElement | null>(null)
+
+const handleSkuPrimaryUpload = async (event: Event) => {
+  if (!selectedSkuDetails.value) return
+  
+  const input = event.target as HTMLInputElement
+  if (input.files && input.files[0]) {
+    try {
+      const file = input.files[0]
+      const mediaType = getMediaType(file)
+      const formData = new FormData()
+      
+      const ext = file.name.split('.').pop()
+      const filename = `${Date.now()}-${Math.random().toString(36).substring(7)}.${ext}`
+      
+      formData.append('name', filename)
+      formData.append('file', file)
+
+      const response = await fetch('https://par.wetarteam.workers.dev/upload', {
+        method: 'PUT',
+        body: formData
+      })
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+      
+      // Initialize SKU media if not exists
+      if (!skuMedia.value[selectedSkuDetails.value.sku]) {
+        skuMedia.value[selectedSkuDetails.value.sku] = {
+          primary: null,
+          additional: []
+        }
+      }
+      
+      skuMedia.value[selectedSkuDetails.value.sku].primary = {
+        url: `${R2_BASE_URL}/${filename}`,
+        mediaType
+      }
+
+    } catch (error) {
+      console.error('Failed to upload media:', error)
+    }
+  }
+}
+
+const handleSkuAdditionalUpload = async (event: Event) => {
+  if (!selectedSkuDetails.value) return
+  
+  const input = event.target as HTMLInputElement
+  if (input.files && input.files[0]) {
+    try {
+      const file = input.files[0]
+      const mediaType = getMediaType(file)
+      const formData = new FormData()
+      
+      const ext = file.name.split('.').pop()
+      const filename = `${Date.now()}-${Math.random().toString(36).substring(7)}.${ext}`
+      
+      formData.append('name', filename)
+      formData.append('file', file)
+
+      const response = await fetch('https://par.wetarteam.workers.dev/upload', {
+        method: 'PUT',
+        body: formData
+      })
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+      
+      // Initialize SKU media if not exists
+      if (!skuMedia.value[selectedSkuDetails.value.sku]) {
+        skuMedia.value[selectedSkuDetails.value.sku] = {
+          primary: null,
+          additional: []
+        }
+      }
+      
+      skuMedia.value[selectedSkuDetails.value.sku].additional.push({
+        url: `${R2_BASE_URL}/${filename}`,
+        mediaType
+      })
+
+    } catch (error) {
+      console.error('Failed to upload media:', error)
+    }
+  }
+}
+
+const triggerSkuPrimaryFileInput = () => {
+  skuPrimaryFileInput.value?.click()
+}
+
+const triggerSkuAdditionalFileInput = () => {
+  skuAdditionalFileInput.value?.click()
+}
+
+// Method to handle SKU media preview
+const openSkuMediaPreview = (media: MediaItem, type: 'primary' | 'additional', index?: number) => {
+  selectedMediaPreview.value = {
+    url: media.url,
+    mediaType: media.mediaType,
+    type,
+    index
+  }
+  showMediaPreviewSheet.value = true
+}
+
+// Method to remove media
+const removeSkuMedia = async () => {
+  if (!selectedMediaPreview.value || !selectedSkuDetails.value) return
+
+  try {
+    const filename = selectedMediaPreview.value.url.split('/').pop()
+    if (!filename) throw new Error('Invalid file URL')
+
+    const response = await fetch(`https://par.wetarteam.workers.dev/${filename}`, {
+      method: 'DELETE'
+    })
+
+    if (!response.ok) {
+      throw new Error('Failed to delete file')
+    }
+
+    const sku = selectedSkuDetails.value.sku
+    if (selectedMediaPreview.value.type === 'primary') {
+      skuMedia.value[sku].primary = null
+    } else if (selectedMediaPreview.value.index !== undefined) {
+      skuMedia.value[sku].additional.splice(selectedMediaPreview.value.index, 1)
+    }
+
+    showMediaPreviewSheet.value = false
+    selectedMediaPreview.value = null
+
+  } catch (error) {
+    console.error('Failed to remove media:', error)
+  }
+}
+
+// Method to initialize SKU details
+const initSkuDetails = (sku: string) => {
+  if (!skuDetailsData.value[sku]) {
+    skuDetailsData.value[sku] = {
+      upc: '',
+      collection: '',
+      cost: 0,
+      price: 0,
+      mrp: 0
+    }
+  }
+  
+  if (!skuMedia.value[sku]) {
+    skuMedia.value[sku] = {
+      primary: null,
+      additional: []
+    }
+  }
+}
+
+// Method to open SKU details sheet
+const openSkuDetails = (sku: GeneratedSku) => {
+  selectedSkuDetails.value = sku
+  initSkuDetails(sku.sku)
+  showSkuDetailsSheet.value = true
+}
+
+// Add stock management methods
+const addStockRow = (sku: string) => {
+  if (!stockDetails.value[sku]) {
+    stockDetails.value[sku] = {
+      rows: []
+    }
+  }
+  
+  const nextGroup = (stockDetails.value[sku].rows.length + 1).toString().padStart(3, '0')
+  stockDetails.value[sku].rows.push({
+    group: nextGroup,
+    stock: 0,
+    dom: '',
+    shelfLife: ''
+  })
+}
+
+const showDatePicker = (rowIndex: number) => {
+  selectedRowIndex.value = rowIndex
+  showDatePickerSheet.value = true
+}
+
+const handleDateSelect = (event: Event) => {
+  const input = event.target as HTMLInputElement
+  selectedDate.value = input.value
+}
+
+const confirmDateSelection = () => {
+  if (selectedRowIndex.value !== null && selectedSkuForStock.value) {
+    const sku = selectedSkuForStock.value.sku
+    stockDetails.value[sku].rows[selectedRowIndex.value].dom = selectedDate.value
+  }
+  showDatePickerSheet.value = false
+  selectedRowIndex.value = null
+}
 </script>
 
 <template>
@@ -1031,15 +1258,15 @@ const pendingAttributeChange = ref<{
                   <!-- Cell 1 - SKU Details (Clickable) -->
                   <div 
                     class="p-3 hover:bg-gray-50/50 cursor-pointer"
-                    @click="openSkuDetailsSheet(item)"
+                    @click="openSkuDetails(item)"
                   >
                     <div class="text-sm font-medium">
                       {{ item.sku }}
                     </div>
                     <div class="mt-1 text-xs text-gray-500">
                       {{ category }} {{ item.combination.map(pair => pair.split(': ')[1]).join(' ') }}
-      </div>
-    </div>
+                    </div>
+                  </div>
 
                   <!-- Cell 2 - Stock Input -->
                   <div 
@@ -1062,8 +1289,459 @@ const pendingAttributeChange = ref<{
       </div>
     </div>
   </div>
+
+  <!-- SKU Details Sheet -->
+  <Sheet v-model:open="showSkuDetailsSheet">
+    <SheetContent 
+      side="bottom" 
+      class="h-[100dvh] w-full !translate-y-0 !transition-none"
+    >
+      <SheetHeader>
+        <SheetTitle>SKU Details</SheetTitle>
+        <SheetDescription>
+          {{ selectedSkuDetails?.sku }} - {{ category }} {{ selectedSkuDetails?.combination.map(pair => pair.split(': ')[1]).join(' ') }}
+        </SheetDescription>
+      </SheetHeader>
+
+      <div class="flex-1 overflow-y-auto p-4 space-y-6">
+        <div class="rounded-lg border bg-white overflow-hidden">
+          <!-- UPC Row -->
+          <div class="flex items-center border-b">
+            <div class="w-24 p-3 border-r bg-gray-50">
+              <span class="text-sm font-medium">UPC</span>
+            </div>
+            <div class="flex-1 p-2">
+              <Input
+                :model-value="skuDetailsData[selectedSkuDetails?.sku || '']?.upc"
+                @update:model-value="value => updateSkuField('upc', value)"
+                type="text"
+                placeholder="Enter UPC"
+                class="w-full border-0 shadow-none focus:ring-0"
+              />
+            </div>
+          </div>
+
+          <!-- Collection Row -->
+          <div class="flex items-center border-b">
+            <div class="w-24 p-3 border-r bg-gray-50">
+              <span class="text-sm font-medium">Collection</span>
+            </div>
+            <div class="flex-1 p-2">
+              <Input
+                :model-value="skuDetailsData[selectedSkuDetails?.sku || '']?.collection"
+                @update:model-value="value => updateSkuField('collection', value)"
+                type="text"
+                placeholder="Enter collection"
+                class="w-full border-0 shadow-none focus:ring-0"
+              />
+            </div>
+          </div>
+
+          <!-- Cost Row -->
+          <div class="flex items-center border-b">
+            <div class="w-24 p-3 border-r bg-gray-50">
+              <span class="text-sm font-medium">Cost</span>
+            </div>
+            <div class="flex-1 p-2">
+              <Input
+                :model-value="skuDetailsData[selectedSkuDetails?.sku || '']?.cost"
+                @update:model-value="value => updateSkuField('cost', Number(value))"
+                type="number"
+                placeholder="0.00"
+                class="w-full border-0 shadow-none focus:ring-0"
+              />
+            </div>
+          </div>
+
+          <!-- Price Row -->
+          <div class="flex items-center border-b">
+            <div class="w-24 p-3 border-r bg-gray-50">
+              <span class="text-sm font-medium">Price</span>
+            </div>
+            <div class="flex-1 p-2">
+              <Input
+                :model-value="skuDetailsData[selectedSkuDetails?.sku || '']?.price"
+                @update:model-value="value => updateSkuField('price', Number(value))"
+                type="number"
+                placeholder="0.00"
+                class="w-full border-0 shadow-none focus:ring-0"
+              />
+            </div>
+          </div>
+
+          <!-- MRP Row -->
+          <div class="flex items-center">
+            <div class="w-24 p-3 border-r bg-gray-50">
+              <span class="text-sm font-medium">MRP</span>
+            </div>
+            <div class="flex-1 p-2">
+              <Input
+                :model-value="skuDetailsData[selectedSkuDetails?.sku || '']?.mrp"
+                @update:model-value="value => updateSkuField('mrp', Number(value))"
+                type="number"
+                placeholder="0.00"
+                class="w-full border-0 shadow-none focus:ring-0"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="p-4 bg-white border-t">
+        <Button class="w-full" @click="showSkuDetailsSheet = false">
+          Save Changes
+        </Button>
+      </div>
+    </SheetContent>
+  </Sheet>
+
+  <!-- Stock Management Sheet -->
+  <Sheet v-model:open="showStockManagementSheet">
+    <SheetContent 
+      side="bottom" 
+      class="h-[100dvh] w-full !translate-y-0 !transition-none"
+    >
+      <SheetHeader>
+        <SheetTitle>Stock Management</SheetTitle>
+        <SheetDescription>
+          {{ selectedSkuForStock?.sku }} - {{ category }} {{ selectedSkuForStock?.combination.map(pair => pair.split(': ')[1]).join(' ') }}
+        </SheetDescription>
+      </SheetHeader>
+
+      <div class="flex-1 overflow-y-auto p-4">
+        <div class="space-y-4">
+          <div class="flex items-center justify-between">
+            <h3 class="text-sm font-medium text-gray-900">Stock Management</h3>
+            <Button 
+              variant="ghost" 
+              size="icon"
+              class="h-8 w-8 p-0"
+              @click="addStockRow(selectedSkuForStock?.sku || '')"
+            >
+              <Plus class="h-4 w-4" />
+            </Button>
+          </div>
+          
+          <div class="rounded-lg border bg-white overflow-hidden">
+            <!-- Header Row -->
+            <div class="grid grid-cols-4 text-sm border-b bg-gray-50">
+              <div class="p-3 font-medium border-r text-center">Group</div>
+              <div class="p-3 font-medium border-r text-center">Stock</div>
+              <div class="p-3 font-medium border-r text-center">DOM</div>
+              <div class="p-3 font-medium text-center">Shelf Life</div>
+            </div>
+
+            <!-- Data Rows -->
+            <div 
+              v-for="(row, index) in stockDetails[selectedSkuForStock?.sku || '']?.rows" 
+              :key="index"
+              class="grid grid-cols-4 border-b last:border-b-0"
+            >
+              <div class="p-3 border-r">
+                <span class="block text-sm text-center">{{ row.group }}</span>
+              </div>
+              <div class="p-3 border-r">
+                <Input
+                  v-model.number="row.stock"
+                  type="number"
+                  class="w-full border-0 shadow-none focus:ring-0 p-0 text-center"
+                />
+              </div>
+              <div class="p-3 border-r">
+                <Input
+                  v-model="row.dom"
+                  type="date"
+                  class="w-full border-0 shadow-none focus:ring-0 p-0 text-center [&::-webkit-calendar-picker-indicator]:hidden"
+                  @click="showDatePicker(index)"
+                />
+              </div>
+              <div class="p-3">
+                <Input
+                  v-model="row.shelfLife"
+                  type="text"
+                  class="w-full border-0 shadow-none focus:ring-0 p-0 text-center"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="p-4 bg-white border-t">
+        <Button class="w-full" @click="showStockManagementSheet = false">
+          Save Changes
+        </Button>
+      </div>
+    </SheetContent>
+  </Sheet>
+
+  <!-- Date Picker Sheet -->
+  <Sheet v-model:open="showDatePickerSheet">
+    <SheetContent side="bottom" class="h-[400px]">
+      <SheetHeader>
+        <SheetTitle>Select Date</SheetTitle>
+        <SheetDescription>
+          Choose a date for the selected stock entry
+        </SheetDescription>
+      </SheetHeader>
+
+      <div class="p-4">
+        <input 
+          type="date" 
+          class="w-full p-4 text-lg rounded-lg border"
+          v-model="selectedDate"
+          @change="handleDateSelect"
+        />
+      </div>
+      <div class="p-4 bg-white border-t">
+        <Button class="w-full" @click="confirmDateSelection">
+          Confirm
+        </Button>
+      </div>
+    </SheetContent>
+  </Sheet>
+
+  <!-- Confirmation Sheet -->
+  <Sheet v-model:open="showConfirmationSheet">
+    <SheetContent side="bottom" class="h-[50vh] rounded-t-xl">
+      <SheetHeader>
+        <SheetTitle>Change Attribute?</SheetTitle>
+        <SheetDescription>
+          Changing the attribute will reset its selected values. Are you sure you want to continue?
+        </SheetDescription>
+      </SheetHeader>
+
+      <div class="mt-6 flex flex-col gap-4">
+        <div class="flex items-center gap-2">
+          <div class="text-sm font-medium">Current Attribute:</div>
+          <div class="text-sm text-gray-500">
+            {{ pendingAttributeChange?.rowNum && selectedAttributes[pendingAttributeChange.rowNum] }}
+          </div>
+        </div>
+        <div class="flex items-center gap-2">
+          <div class="text-sm font-medium">New Attribute:</div>
+          <div class="text-sm text-gray-500">
+            {{ pendingAttributeChange?.newValue }}
+          </div>
+        </div>
+        <div class="flex items-center gap-2">
+          <div class="text-sm font-medium">Selected Values:</div>
+          <div class="text-sm text-gray-500">
+            {{ pendingAttributeChange?.rowNum && selectedOptions[pendingAttributeChange.rowNum].join(', ') }}
+          </div>
+        </div>
+      </div>
+
+      <div class="absolute bottom-0 left-0 right-0 p-6 bg-white border-t">
+        <div class="flex justify-end gap-2">
+          <Button variant="outline" @click="showConfirmationSheet = false">
+            Cancel
+          </Button>
+          <Button @click="confirmAttributeChange">
+            Confirm Change
+          </Button>
+        </div>
+      </div>
+    </SheetContent>
+  </Sheet>
 </template>
 
 <style scoped>
-/* Copy all styles from add-product.vue */
+/* Hide scrollbar for Chrome, Safari and Opera */
+.overflow-auto::-webkit-scrollbar {
+  display: none;
+}
+
+/* Hide scrollbar for IE, Edge and Firefox */
+.overflow-auto {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+
+/* Add these styles for better scrolling */
+.overflow-y-auto {
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Add to your existing styles */
+:deep(.codex-editor) {
+  @apply h-full;
+}
+
+:deep(.ce-block__content) {
+  @apply max-w-none mx-4;
+}
+
+:deep(.ce-toolbar__content) {
+  @apply max-w-none mx-4;
+}
+
+:deep(.codex-editor__redactor) {
+  @apply pb-16;
+}
+
+/* Add these styles */
+:deep(input) {
+  background-color: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+:deep(input:focus) {
+  outline: none !important;
+  ring: none !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+/* Update existing hover style */
+.hover\:bg-gray-50:hover :deep(input) {
+  background-color: transparent !important;
+}
+
+/* Add to your existing styles */
+:deep(.codex-editor) {
+  padding: 0;
+}
+
+:deep(.ce-toolbar__content) {
+  max-width: none;
+  margin: 0;
+}
+
+:deep(.ce-block__content) {
+  max-width: none;
+  margin: 0;
+}
+
+:deep(.codex-editor__redactor) {
+  padding-bottom: 80px !important;
+}
+
+:deep(.ce-toolbar__plus) {
+  left: -30px;
+}
+
+:deep(.ce-toolbar__actions) {
+  right: -30px;
+}
+
+/* Add or update these styles */
+:deep(.codex-editor) {
+  padding: 1rem 0 !important;
+  border: none !important;
+}
+
+:deep(.ce-toolbar__content) {
+  max-width: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+:deep(.ce-block__content) {
+  max-width: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+:deep(.codex-editor__redactor) {
+  padding-bottom: 80px !important;
+  margin: 0 !important;
+}
+
+:deep(.ce-toolbar__plus) {
+  left: -30px !important;
+}
+
+:deep(.ce-toolbar__actions) {
+  right: -30px !important;
+}
+
+:deep(.ce-block) {
+  margin: 0 !important;
+  padding: 0.5rem 0 !important;
+}
+
+:deep(.ce-paragraph) {
+  padding: 0 !important;
+  line-height: 1.6 !important;
+}
+
+:deep(.ce-toolbar__settings-btn) {
+  width: 24px !important;
+  height: 24px !important;
+}
+
+:deep(.ce-inline-toolbar) {
+  border-radius: 6px !important;
+}
+
+:deep(.ce-conversion-toolbar) {
+  border-radius: 6px !important;
+}
+
+/* Add this to your existing styles */
+:deep(input) {
+  &:focus-visible {
+    outline: none !important;
+  }
+}
+
+:deep(.input:focus) {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+:deep(.input:focus-visible) {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+/* Add these styles to remove animations */
+:deep(.sheet-content[data-state='open']) {
+  animation: none !important;
+  transform: translateY(0) !important;
+}
+
+:deep(.sheet-content[data-state='closed']) {
+  animation: none !important;
+}
+
+:deep(.sheet-overlay[data-state='open']) {
+  animation: none !important;
+  opacity: 0.4 !important;
+}
+
+:deep(.sheet-overlay[data-state='closed']) {
+  animation: none !important;
+}
+
+/* Replace the previous animation override styles with these */
+:deep(.sheet-content) {
+  transition: none !important;
+  animation: none !important;
+  transform: translateY(0) !important;
+}
+
+:deep(.sheet-overlay) {
+  transition: none !important;
+  animation: none !important;
+}
+
+/* Disable all transitions on the sheet */
+:deep([data-state]) {
+  transition: none !important;
+}
+
+/* Force immediate positioning */
+:deep(.fixed) {
+  transition: none !important;
+  transform: translateY(0) !important;
+}
+
+/* Override any transform animations */
+:deep(*) {
+  transform: none !important;
+  transition: none !important;
+}
 </style> 
