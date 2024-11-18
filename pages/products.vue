@@ -219,7 +219,10 @@ onMounted(() => {
             >
               <!-- Image -->
               <div class="w-[200px] p-3">
-                <div class="w-12 h-12 rounded-lg overflow-hidden bg-gray-50">
+                <div 
+                  class="w-12 h-12 rounded-lg overflow-hidden bg-gray-50 cursor-pointer"
+                  @click.stop="navigateTo(`/edit-product/${product.id}`)"
+                >
                   <template v-if="product.medias?.primary">
                     <img 
                       v-if="product.medias.primary.mediaType === 'image'"
