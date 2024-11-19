@@ -41,6 +41,9 @@ const stockDetails = ref<{ [key: string]: StockDetails }>({})
 const selectedDate = ref('')
 const selectedRowIndex = ref<number | null>(null)
 
+// Add this ref at the top with other refs
+const showDatePickerSheet = ref(false)
+
 interface SkuDetails {
   upc: string
   collection: string
@@ -238,6 +241,17 @@ const openSkuDetails = (stock: StockItem) => {
 const openStockManagement = (stock: StockItem, event: Event) => {
   event.stopPropagation()
   selectedStock.value = stock
+  // Initialize stock details if not exists
+  if (!stockDetails.value[stock.SKU]) {
+    stockDetails.value[stock.SKU] = {
+      rows: [{
+        group: '001',
+        stock: stock.stock,
+        dom: '',
+        shelfLife: ''
+      }]
+    }
+  }
   isStockManagementOpen.value = true
 }
 
@@ -305,8 +319,11 @@ onMounted(() => {
                 </div>
               </div>
 
-              <!-- Stock Column -->
-              <div class="w-[50px] flex items-center justify-end mr-4">
+              <!-- Stock Column - Added click handler -->
+              <div 
+                class="w-[50px] flex items-center justify-end mr-4 cursor-pointer"
+                @click.stop="openStockManagement(stock, $event)"
+              >
                 {{ stock.stock }}
               </div>
             </div>
