@@ -41,7 +41,14 @@ const menuItems = [
     ]
   },
   { icon: BarChart, label: 'Reports', link: '/reports' },
-  { icon: Settings, label: 'Settings', link: '/settings' },
+  {
+    icon: Settings,
+    label: 'Settings',
+    submenu: [
+      { icon: User, label: 'Profile', link: '/profile' },
+      { icon: Settings, label: 'Options', link: '/settings' }
+    ]
+  },
 ]
 
 const filteredMenuItems = computed(() => {
