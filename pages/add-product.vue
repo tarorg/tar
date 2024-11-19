@@ -2369,6 +2369,88 @@ const openMediaPreview = (media: MediaItem, type: 'primary' | 'additional', inde
 }
 
 /* Rest of your existing styles... */
+
+/* Add these styles to remove highlights and borders */
+:deep(input),
+:deep(input:focus),
+:deep(input:focus-visible) {
+  outline: none !important;
+  box-shadow: none !important;
+  border: none !important;
+  -webkit-tap-highlight-color: transparent;
+}
+
+:deep(.input),
+:deep(.input:focus),
+:deep(.input:focus-visible) {
+  outline: none !important;
+  box-shadow: none !important;
+  border: none !important;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Remove tap highlight color on mobile */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Remove border highlight on cells */
+.border-r {
+  border-color: rgb(229 231 235) !important;
+}
+
+/* Remove input field background highlight */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 30px white inset !important;
+}
+
+/* Adjust sheet content styles */
+:deep(.sheet-content) {
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  input,
+  .input {
+    background-color: transparent !important;
+    border: none !important;
+    outline: none !important;
+    box-shadow: none !important;
+    caret-color: transparent !important;
+    user-select: none !important;
+  }
+
+  input:focus,
+  .input:focus {
+    outline: none !important;
+    box-shadow: none !important;
+    background-color: transparent !important;
+  }
+}
+
+/* Prevent text selection */
+.sheet-content {
+  user-select: none !important;
+}
+
+/* Remove focus ring from all elements in sheet */
+:deep(*:focus) {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+/* Disable all focus styles */
+:deep(*) {
+  &:focus,
+  &:focus-visible,
+  &:focus-within {
+    outline: none !important;
+    box-shadow: none !important;
+  }
+}
 </style>
 
 

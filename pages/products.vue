@@ -211,9 +211,7 @@ onMounted(() => {
 
     <!-- Main Content -->
     <div class="flex-1 overflow-auto">
-      <!-- Table Container -->
       <div class="w-full">
-        <!-- Table Rows - removed header section completely -->
         <div class="w-full">
           <template v-for="product in filteredProducts" :key="product.id">
             <!-- Main Product Row -->
@@ -221,8 +219,8 @@ onMounted(() => {
               class="flex w-full border-b border-gray-200 hover:bg-gray-50 cursor-pointer"
               @click="toggleExpand(product.id)"
             >
-              <!-- Image -->
-              <div class="w-[200px] p-3">
+              <!-- Image Column -->
+              <div class="w-[80px] p-3">
                 <div 
                   class="w-12 h-12 rounded-lg overflow-hidden bg-gray-50 cursor-pointer"
                   @click.stop="navigateTo(`/edit-product/${product.id}`)"
@@ -241,7 +239,7 @@ onMounted(() => {
                 </div>
               </div>
 
-              <!-- Product Name with variants and category subtext -->
+              <!-- Product Name Column -->
               <div class="flex-1 p-3 flex flex-col justify-center">
                 <div class="text-sm font-medium">{{ product.product_name }}</div>
                 <div class="text-xs text-gray-500">
@@ -249,9 +247,11 @@ onMounted(() => {
                 </div>
               </div>
 
-              <!-- Stock -->
-              <div class="w-[150px] p-3 flex items-center">
-                {{ product.totalstock }}
+              <!-- Stock Column - adjusted padding to match SKU rows -->
+              <div class="w-[80px] flex justify-end px-4">
+                <div class="w-[50px] text-right">
+                  {{ product.totalstock }}
+                </div>
               </div>
             </div>
 
@@ -260,16 +260,20 @@ onMounted(() => {
               v-if="isExpanded(product.id)"
               class="w-full bg-gray-50 border-b border-gray-200"
             >
-              <!-- SKU Items - removed header but kept all columns -->
+              <!-- SKU Items -->
               <div 
                 v-for="item in product.items" 
                 :key="item.SKU"
                 class="flex w-full py-2 px-4 text-sm border-b border-gray-100 last:border-0"
               >
-                <div class="w-[200px]">{{ item.SKU }}</div>
-                <div class="w-[200px]">{{ item.desc }}</div>
-                <div class="flex-1"></div>
-                <div class="w-[150px]">{{ item.stock }}</div>
+                <!-- SKU Column -->
+                <div class="flex-1">{{ item.SKU }}</div>
+                <!-- Stock Column -->
+                <div class="w-[80px] flex justify-end">
+                  <div class="w-[50px] text-right">
+                    {{ item.stock }}
+                  </div>
+                </div>
               </div>
             </div>
           </template>
