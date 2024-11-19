@@ -306,13 +306,8 @@ onMounted(() => {
               </div>
 
               <!-- Stock Column -->
-              <div 
-                class="w-[80px] flex justify-end px-4 cursor-pointer"
-                @click="(e) => openStockManagement(stock, e)"
-              >
-                <div class="w-[50px] text-right">
-                  {{ stock.stock }}
-                </div>
+              <div class="w-[50px] flex items-center justify-end mr-4">
+                {{ stock.stock }}
               </div>
             </div>
           </template>

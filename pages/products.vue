@@ -247,11 +247,9 @@ onMounted(() => {
                 </div>
               </div>
 
-              <!-- Stock Column - adjusted padding to match SKU rows -->
-              <div class="w-[80px] flex justify-end px-4">
-                <div class="w-[50px] text-right">
-                  {{ product.totalstock }}
-                </div>
+              <!-- Stock Column - Adjusted for perfect alignment -->
+              <div class="w-[50px] flex items-center justify-end mr-4">
+                {{ product.totalstock }}
               </div>
             </div>
 
@@ -268,11 +266,9 @@ onMounted(() => {
               >
                 <!-- SKU Column -->
                 <div class="flex-1">{{ item.SKU }}</div>
-                <!-- Stock Column -->
-                <div class="w-[80px] flex justify-end">
-                  <div class="w-[50px] text-right">
-                    {{ item.stock }}
-                  </div>
+                <!-- Stock Column - Matched with parent -->
+                <div class="w-[50px] flex items-center justify-end mr-4">
+                  {{ item.stock }}
                 </div>
               </div>
             </div>
