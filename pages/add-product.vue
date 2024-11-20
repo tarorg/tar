@@ -2209,25 +2209,26 @@ onMounted(() => {
     <!-- Add this new Sheet component after your existing sheets -->
     <Sheet v-model:open="showProductSettingsSheet">
       <SheetContent side="right" class="w-full sm:w-[400px]">
-        <SheetHeader>
-          <SheetTitle>Product Settings</SheetTitle>
-          <SheetDescription>
-            Configure product details and settings
-          </SheetDescription>
-        </SheetHeader>
-        
-        <div class="flex flex-col h-full">
-          <!-- Header -->
-          <div class="flex items-center justify-between p-4 border-b">
-            <Button 
-              variant="ghost" 
-              @click="saveProduct"
-              :disabled="isSaving"
-            >
-              {{ isSaving ? 'Saving...' : 'Save' }}
-            </Button>
-          </div>
+        <!-- Replace the existing SheetHeader with this -->
+        <div class="flex items-center justify-between p-4 border-b">
+          <Button 
+            variant="ghost" 
+            size="icon"
+            @click="showProductSettingsSheet = false"
+          >
+            <ArrowLeft class="h-5 w-5" />
+          </Button>
+          <Button 
+            variant="ghost" 
+            @click="saveProduct"
+            :disabled="isSaving"
+          >
+            {{ isSaving ? 'Saving...' : 'Save' }}
+          </Button>
+        </div>
 
+        <!-- Rest of the content remains the same -->
+        <div class="flex flex-col h-full">
           <!-- Settings Table -->
           <div class="flex-1 overflow-y-auto">
             <div class="border-b">
@@ -2723,6 +2724,11 @@ input:-webkit-autofill:active {
 /* Update the select trigger styles */
 :deep(.select-trigger) {
   @apply h-9 px-3 py-1;
+}
+
+/* Add this CSS to hide the default close button */
+:deep(.sheet-header) {
+  display: none;
 }
 </style>
 
