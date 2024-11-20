@@ -149,6 +149,97 @@ const saveProduct = async () => {
   
   isSaving.value = true
   try {
+    const sql = `
+      INSERT INTO products (
+        storeid,
+        type,
+        prodtype,
+        productname,
+        description,
+        medias,
+        handle,
+        pagetitle,
+        metadesc,
+        unit,
+        category,
+        vendor,
+        collections,
+        tags,
+        option1,
+        option2,
+        option3,
+        items,
+        totalstock,
+        trackquantity,
+        continueselling,
+        status,
+        saleschannels,
+        visibility,
+        weight,
+        weightunit
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `.trim()
+
+    // Add these new refs
+    const handle = ref('')
+    const pageTitle = ref('')
+    const metaDesc = ref('')
+    const vendor = ref('')
+    const collections = ref<string[]>([])
+    const tags = ref<string[]>([])
+    const trackQuantity = ref(true)
+    const continueSelling = ref(false)
+    const status = ref<'draft' | 'published'>('draft')
+    const saleChannels = ref<string[]>([])
+    const visibility = ref<'visible' | 'hidden'>('visible')
+    const weight = ref<number | null>(null)
+    const weightUnit = ref('kg')
+
+    const values = [
+      'default-store', // storeid - replace with actual store ID
+      selectedType.value || '',
+      'physical', // prodtype - default to physical
+      productName.value || '',
+      editorData.value?.blocks?.map(block => block?.data?.text || '').join('\n') || '',
+      JSON.stringify({
+        primary: primaryMedia.value,
+        additional: additionalMedia.value
+      }),
+      handle.value || productName.value.toLowerCase().replace(/\s+/g, '-'),
+      pageTitle.value || productName.value,
+      metaDesc.value || '',
+      selectedUnit.value || '',
+      category.value || '',
+      vendor.value || '',
+      JSON.stringify(collections.value),
+      JSON.stringify(tags.value),
+      option1,
+      option2,
+      option3,
+      JSON.stringify(generatedSkus.value.map(sku => ({
+        SKU: sku.sku,
+        desc: '',
+        upc: skuDetailsData.value[sku.sku]?.upc || '',
+        medias: JSON.stringify({
+          primary: skuMedia.value[sku.sku]?.primary || null,
+          additional: skuMedia.value[sku.sku]?.additional || []
+        }),
+        collection: skuDetailsData.value[sku.sku]?.collection || '',
+        cost: Number(skuDetailsData.value[sku.sku]?.cost || 0),
+        price: Number(skuDetailsData.value[sku.sku]?.price || 0),
+        MRP: Number(skuDetailsData.value[sku.sku]?.mrp || 0),
+        stock: getSkuTotalStock(sku.sku) || 0
+      }))),
+      generatedSkus.value.reduce((sum, sku) => sum + (getSkuTotalStock(sku.sku) || 0), 0),
+      trackQuantity.value,
+      continueSelling.value,
+      status.value,
+      JSON.stringify(saleChannels.value),
+      visibility.value,
+      weight.value,
+      weightUnit.value
+    ]
+
     const url = "https://commerce-tarframework.turso.io/v2/pipeline"
     const authToken = "eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJhIjoicnciLCJpYXQiOjE3Mjk2NzQwNjQsImlkIjoiN2ZiNTFhMTgtYjU1My00Y2M2LTkwZWItZDE0ZTcxNDI5ODlhIn0.zxIjODPlBzNcAgQQ70xZj2sI7j7RSAHpYPQUtvyoAHDb4nLGzHAPiVvnJ6qeK7-00F8A6Lz__CSPjdITPZ31BQ"
 
@@ -169,60 +260,6 @@ const saveProduct = async () => {
       option1: option1 ? JSON.parse(option1) : null,
       option2: option2 ? JSON.parse(option2) : null,
       option3: option3 ? JSON.parse(option3) : null
-    })
-
-    // Prepare the SQL statement
-    const sql = `
-      INSERT INTO products (
-        type,
-        product_name,
-        description,
-        medias,
-        unit,
-        category,
-        option1,
-        option2,
-        option3,
-        totalstock,
-        items
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `.trim()
-
-    // Prepare the values
-    const values = [
-      selectedType.value || '',
-      productName.value || '',
-      editorData.value?.blocks?.map(block => block?.data?.text || '').join('\n') || '',
-      JSON.stringify({
-        primary: primaryMedia.value,
-        additional: additionalMedia.value
-      }),
-      selectedUnit.value || '',
-      category.value || '',
-      option1,  // Now formatted as {"color": ["Red", "Blue"]}
-      option2,  // Now formatted as {"material": ["Cotton"]}
-      option3,  // Now formatted as {"size": ["Medium"]}
-      generatedSkus.value.reduce((sum, sku) => sum + (getSkuTotalStock(sku.sku) || 0), 0),
-      JSON.stringify(generatedSkus.value.map(sku => ({
-        SKU: sku.sku,
-        desc: '',
-        upc: skuDetailsData.value[sku.sku]?.upc || '',
-        medias: JSON.stringify({
-          primary: skuMedia.value[sku.sku]?.primary || null,
-          additional: skuMedia.value[sku.sku]?.additional || []
-        }),
-        collection: skuDetailsData.value[sku.sku]?.collection || '',
-        cost: Number(skuDetailsData.value[sku.sku]?.cost || 0),
-        price: Number(skuDetailsData.value[sku.sku]?.price || 0),
-        MRP: Number(skuDetailsData.value[sku.sku]?.mrp || 0),
-        stock: getSkuTotalStock(sku.sku) || 0
-      })))
-    ]
-
-    console.log('Saving product with options:', {
-      option1,
-      option2,
-      option3
     })
 
     const response = await fetch(url, {

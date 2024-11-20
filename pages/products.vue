@@ -1,31 +1,35 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { Button } from '@/components/ui/button'
-import { Plus, Video as VideoIcon } from 'lucide-vue-next'
+import { Plus, Video as VideoIcon, EyeOff } from 'lucide-vue-next'
 import { Input } from '@/components/ui/input'
 import AppHeader from '@/components/AppHeader.vue'
 
 interface Product {
   id: number
+  storeid: string
   type: string
-  product_name: string
+  prodtype: 'physical' | 'digital' | 'service'
+  productname: string
   description: string
   medias: {
-    primary: {
-      url: string
-      mediaType: 'image' | 'video'
-    } | null
-    additional: {
-      url: string
-      mediaType: 'image' | 'video'
-    }[]
+    primary: MediaItem | null
+    additional: MediaItem[]
   }
+  // SEO and URLs
+  handle: string
+  pagetitle: string
+  metadesc: string
+  // Organization
   unit: string
   category: string
+  vendor: string
+  collections: string[]
+  tags: string[]
+  // Options and Variants
   option1: string | null
   option2: string | null
   option3: string | null
-  totalstock: number
   items: {
     SKU: string
     desc: string
@@ -37,8 +41,27 @@ interface Product {
     MRP: number
     stock: number
   }[]
-  created_at: string
-  updated_at: string
+  // Inventory
+  totalstock: number
+  trackquantity: boolean
+  continueselling: boolean
+  // Status and Visibility
+  status: 'draft' | 'published'
+  publishedat: string | null
+  saleschannels: string[]
+  visibility: 'visible' | 'hidden'
+  // Shipping
+  weight: number | null
+  weightunit: string
+  // Timestamps
+  createdat: string
+  updatedat: string
+  active: boolean
+}
+
+interface MediaItem {
+  url: string
+  mediaType: 'image' | 'video'
 }
 
 const products = ref<Product[]>([])
@@ -96,36 +119,170 @@ const fetchProducts = async () => {
       return
     }
 
-    // Create a mapping of column indices to names
+    // Update the column mapping to exclude columns 4,5
     const colMapping = cols.reduce((acc: {[key: string]: number}, col: any, index: number) => {
-      acc[col.name] = index
+      // Skip columns 4 and 5
+      if (col.name !== 'option4' && col.name !== 'option5') {
+        acc[col.name] = index
+      }
       return acc
     }, {})
 
-    // Parse the results
+    // Update the safeJsonParse function to be more robust
+    const safeJsonParse = (value: string | null, defaultValue: any = null) => {
+      if (!value) return defaultValue
+      if (typeof value !== 'string') return value
+
+      try {
+        // First try direct parsing
+        return JSON.parse(value)
+      } catch (e) {
+        try {
+          // Try cleaning the string first
+          const cleaned = value
+            .replace(/\n/g, '\\n')
+            .replace(/\r/g, '\\r')
+            .replace(/\t/g, '\\t')
+            .replace(/\f/g, '\\f')
+            .replace(/[\u0000-\u0019]+/g, '') // Remove control characters
+            .replace(/([{,]\s*)(\w+)\s*:/g, '$1"$2":') // Ensure property names are quoted
+            .replace(/:\s*'([^']*)'/g, ':"$1"') // Replace single quotes with double quotes
+            .replace(/\\\\/g, '\\') // Fix double escaped backslashes
+            .replace(/\\"/g, '"') // Fix escaped quotes
+            .replace(/"{/g, '{') // Remove quotes around objects
+            .replace(/}"/g, '}') // Remove quotes around objects
+            
+          return JSON.parse(cleaned)
+        } catch (e2) {
+          console.error('JSON parse error after cleaning:', e2, 'Original value:', value)
+          return defaultValue
+        }
+      }
+    }
+
+    // Update the parseItems function
+    const parseItems = (itemsValue: string | null) => {
+      if (!itemsValue) return []
+      try {
+        // If itemsValue is already parsed
+        if (Array.isArray(itemsValue)) {
+          return itemsValue
+        }
+
+        // Try to parse if it's a string
+        let parsed = itemsValue
+        if (typeof itemsValue === 'string') {
+          // Clean up the string first
+          parsed = itemsValue
+            .replace(/\\/g, '') // Remove backslashes
+            .replace(/"{/g, '{') // Remove quotes around objects
+            .replace(/}"/g, '}') // Remove quotes around objects
+            .replace(/\\"/g, '"') // Fix escaped quotes
+          
+          parsed = JSON.parse(parsed)
+        }
+
+        if (!Array.isArray(parsed)) {
+          console.error('Items value is not an array:', parsed)
+          return []
+        }
+
+        return parsed.map(item => ({
+          SKU: item.SKU || '',
+          desc: item.desc || '',
+          upc: item.upc || '',
+          medias: typeof item.medias === 'string' 
+            ? item.medias.replace(/\\/g, '')  // Clean up nested JSON
+            : JSON.stringify(item.medias),
+          collection: item.collection || '',
+          cost: Number(item.cost || 0),
+          price: Number(item.price || 0),
+          MRP: Number(item.MRP || 0),
+          stock: Number(item.stock || 0)
+        }))
+      } catch (e) {
+        console.error('Error parsing items:', e, 'Original value:', itemsValue)
+        return []
+      }
+    }
+
+    // Update the products mapping
     products.value = rows.map((row: any[]) => {
       try {
-        return {
-          id: Number(row[colMapping.id].value),
-          type: row[colMapping.type].value,
-          product_name: row[colMapping.product_name].value,
-          description: row[colMapping.description].value,
-          medias: JSON.parse(row[colMapping.medias].value),
-          unit: row[colMapping.unit].value,
-          category: row[colMapping.category].value,
-          option1: row[colMapping.option1].value ? JSON.parse(row[colMapping.option1].value) : null,
-          option2: row[colMapping.option2].value ? JSON.parse(row[colMapping.option2].value) : null,
-          option3: row[colMapping.option3].value ? JSON.parse(row[colMapping.option3].value) : null,
-          totalstock: Number(row[colMapping.totalstock].value),
-          items: JSON.parse(row[colMapping.items].value),
-          created_at: row[colMapping.created_at].value,
-          updated_at: row[colMapping.updated_at].value
+        // Parse medias
+        let mediasData = { primary: null, additional: [] }
+        try {
+          const mediasRaw = row[colMapping.medias]?.value
+          if (mediasRaw) {
+            const parsed = safeJsonParse(mediasRaw)
+            if (parsed && typeof parsed === 'object') {
+              mediasData = {
+                primary: parsed.primary || null,
+                additional: Array.isArray(parsed.additional) ? parsed.additional : []
+              }
+            }
+          }
+        } catch (e) {
+          console.error('Error parsing medias:', e)
         }
-      } catch (parseError) {
-        console.error('Error parsing row:', row, parseError)
+
+        // Parse options (1-3 only)
+        const parseOption = (optionValue: string | null) => {
+          if (!optionValue) return null
+          try {
+            const parsed = safeJsonParse(optionValue)
+            if (parsed && typeof parsed === 'object') {
+              const entries = Object.entries(parsed)
+              if (entries.length === 1) {
+                const [key, value] = entries[0]
+                return { [key]: Array.isArray(value) ? value : [value] }
+              }
+            }
+            return null
+          } catch (e) {
+            console.error('Error parsing option:', e)
+            return null
+          }
+        }
+
+        return {
+          id: Number(row[colMapping.id]?.value || 0),
+          storeid: row[colMapping.storeid]?.value || '',
+          type: row[colMapping.type]?.value || '',
+          prodtype: row[colMapping.prodtype]?.value || 'physical',
+          productname: row[colMapping.productname]?.value || '',
+          description: row[colMapping.description]?.value || '',
+          medias: mediasData,
+          handle: row[colMapping.handle]?.value || '',
+          pagetitle: row[colMapping.pagetitle]?.value || '',
+          metadesc: row[colMapping.metadesc]?.value || '',
+          unit: row[colMapping.unit]?.value || '',
+          category: row[colMapping.category]?.value || '',
+          vendor: row[colMapping.vendor]?.value || '',
+          collections: safeJsonParse(row[colMapping.collections]?.value, []),
+          tags: safeJsonParse(row[colMapping.tags]?.value, []),
+          option1: parseOption(row[colMapping.option1]?.value),
+          option2: parseOption(row[colMapping.option2]?.value),
+          option3: parseOption(row[colMapping.option3]?.value),
+          items: parseItems(row[colMapping.items]?.value),
+          totalstock: Number(row[colMapping.totalstock]?.value || 0),
+          trackquantity: Boolean(row[colMapping.trackquantity]?.value),
+          continueselling: Boolean(row[colMapping.continueselling]?.value),
+          status: row[colMapping.status]?.value || 'draft',
+          publishedat: row[colMapping.publishedat]?.value || null,
+          saleschannels: safeJsonParse(row[colMapping.saleschannels]?.value, []),
+          visibility: row[colMapping.visibility]?.value || 'visible',
+          weight: row[colMapping.weight]?.value ? Number(row[colMapping.weight].value) : null,
+          weightunit: row[colMapping.weightunit]?.value || 'kg',
+          createdat: row[colMapping.createdat]?.value || '',
+          updatedat: row[colMapping.updatedat]?.value || '',
+          active: Boolean(row[colMapping.active]?.value)
+        }
+      } catch (error) {
+        console.error('Error parsing row:', error, row)
         return null
       }
-    }).filter(Boolean)
+    }).filter(Boolean) as Product[]
 
     console.log('Parsed products:', products.value)
 
@@ -143,7 +300,7 @@ const filteredProducts = computed(() => {
   
   const query = searchQuery.value.toLowerCase()
   return products.value.filter(product => 
-    product.product_name.toLowerCase().includes(query) ||
+    product.productname.toLowerCase().includes(query) ||
     product.category.toLowerCase().includes(query) ||
     product.items.some(item => item.SKU.toLowerCase().includes(query))
   )
@@ -241,7 +398,7 @@ onMounted(() => {
 
               <!-- Product Name Column -->
               <div class="flex-1 p-3 flex flex-col justify-center">
-                <div class="text-sm font-medium">{{ product.product_name }}</div>
+                <div class="text-sm font-medium">{{ product.productname }}</div>
                 <div class="text-xs text-gray-500">
                   {{ getVariantCount(product) }}&nbsp;&nbsp;{{ product.category }}
                 </div>

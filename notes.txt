@@ -60,3 +60,92 @@ stock : " "
 
 }
 
+CREATE TABLE products ( 
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    storeid TEXT NOT NULL,
+    type TEXT,
+    prodtype TEXT, -- 'physical', 'digital', 'service'
+    productname TEXT NOT NULL,
+    description TEXT,
+    medias TEXT,
+    
+    -- SEO and URLs
+    handle TEXT,
+    pagetitle TEXT,
+    metadesc TEXT,
+    
+    -- Organization
+    unit TEXT,
+    category TEXT,
+    vendor TEXT,
+    collections TEXT,
+    tags TEXT,
+    
+    -- Options and Variants
+    option1 TEXT,
+    option2 TEXT,
+    option3 TEXT,
+    items TEXT,
+    
+    -- Inventory
+    totalstock INTEGER,
+    trackquantity BOOLEAN,
+    continueselling BOOLEAN,
+    
+    -- Status and Visibility
+    status TEXT DEFAULT 'draft',
+    publishedat TEXT,
+    saleschannels TEXT,
+    visibility TEXT DEFAULT 'visible',
+    
+    -- Shipping
+    weight REAL,
+    weightunit TEXT,
+    
+    -- Timestamps
+    createdat TEXT DEFAULT CURRENT_TIMESTAMP,
+    updatedat TEXT DEFAULT CURRENT_TIMESTAMP,
+    active BOOLEAN DEFAULT true
+);
+
+
+
+CREATE TABLE stores (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    domain TEXT NOT NULL UNIQUE,
+    email TEXT NOT NULL,
+    phone TEXT,
+    address TEXT,
+    addressext TEXT,
+    city TEXT,
+    state TEXT,
+    country TEXT,
+    postalcode TEXT,
+    currency TEXT DEFAULT 'USD',
+    timezone TEXT,
+    locale TEXT DEFAULT 'en',
+    weightunit TEXT DEFAULT 'kg',
+    planname TEXT,
+    plandisplay TEXT,
+    logo TEXT,
+    favicon TEXT,
+    color TEXT,
+    social TEXT,
+    createdat DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updatedat DATETIME DEFAULT CURRENT_TIMESTAMP,
+    active BOOLEAN DEFAULT true
+);
+
+-- Modified junction table for Nhost users
+CREATE TABLE storeusers (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    storeid INTEGER NOT NULL,
+    userid TEXT NOT NULL, -- Changed to TEXT to store Nhost UUID
+    role TEXT NOT NULL, -- 'owner', 'admin', 'staff', etc.
+    permissions TEXT, -- JSON field for specific permissions
+    createdat DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updatedat DATETIME DEFAULT CURRENT_TIMESTAMP,
+    active BOOLEAN DEFAULT true,
+    FOREIGN KEY (storeid) REFERENCES stores(id)
+);

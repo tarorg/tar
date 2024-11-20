@@ -29,16 +29,20 @@ import {
 } from '@/components/ui/sheet'
 import type EditorJS from '@editorjs/editorjs'
 
-// Get the product ID from the route
+// At the top of the script section, after imports and interfaces
+// Add all refs and state variables
 const route = useRoute()
 const productId = route.params.id
-
-// Add loading and error states
 const isLoading = ref(true)
 const loadError = ref<string | null>(null)
 const isSaving = ref(false)
 
-// Add all the refs needed for form data
+// Navigation function - keep only this one, remove all other declarations
+const goBack = () => {
+  navigateTo('/products')
+}
+
+// Form data refs
 const selectedType = ref('I')
 const productName = ref('')
 const category = ref('')
@@ -47,7 +51,7 @@ const primaryMedia = ref<MediaItem | null>(null)
 const additionalMedia = ref<MediaItem[]>([])
 const product = ref<Product | null>(null)
 
-// Add these refs
+// Sheet refs
 const primaryFileInput = ref<HTMLInputElement | null>(null)
 const additionalFileInput = ref<HTMLInputElement | null>(null)
 const showConfirmationSheet = ref(false)
@@ -58,6 +62,7 @@ const showDatePickerSheet = ref(false)
 const showStockManagementSheet = ref(false)
 const showMediaPreviewSheet = ref(false)
 
+// Editor refs
 const editor = ref<EditorJS | null>(null)
 const editorData = ref<EditorData>({
   time: Date.now(),
@@ -65,6 +70,7 @@ const editorData = ref<EditorData>({
   version: '2.28.2'
 })
 
+// SKU and stock refs
 const selectedSku = ref<GeneratedSku | null>(null)
 const selectedSkuDetails = ref<GeneratedSku | null>(null)
 const selectedSkuForStock = ref<GeneratedSku | null>(null)
@@ -72,6 +78,7 @@ const selectedDate = ref('')
 const selectedRowIndex = ref<number | null>(null)
 const selectedMediaPreview = ref<MediaPreview | null>(null)
 
+// Attribute and option refs
 const attributes = ref<AttributeOption[]>([])
 const optionValues = ref<OptionValue[]>([])
 const selectedAttributes = ref<{[key: string]: string}>({
@@ -82,14 +89,21 @@ const selectedAttributes = ref<{[key: string]: string}>({
 const selectedOptions = ref<{[key: string]: string[]}>({
   '4': [],
   '5': [],
-  '6': []
+  '6': ''
 })
 
+// Pending changes ref
+const pendingAttributeChange = ref<{
+  rowNum: string;
+  newValue: string;
+} | null>(null)
+
+// Storage refs
 const stockDetails = ref<{ [key: string]: StockDetails }>({})
 const skuDetailsData = ref<{ [key: string]: SkuDetails }>({})
 const skuMedia = ref<{ [key: string]: { primary: MediaItem | null; additional: MediaItem[] } }>({})
 
-// Add these constants
+// Constants
 const R2_BASE_URL = 'https://pub-645e6a6aec9743558410b2ba6cedc346.r2.dev'
 const acceptedFileTypes = "image/*,video/*"
 const units = [
@@ -104,413 +118,28 @@ const units = [
   'cm',
 ]
 
-// Add interfaces
-interface MediaItem {
-  url: string
-  mediaType: 'image' | 'video'
-}
-
-interface Product {
-  id: number
-  type: string
-  product_name: string
-  description: string
-  medias: {
-    primary: MediaItem | null
-    additional: MediaItem[]
-  }
-  unit: string
-  category: string
-  option1: string | null
-  option2: string | null
-  option3: string | null
-  totalstock: number
-  items: {
-    SKU: string
-    desc: string
-    upc: string
-    medias: string
-    collection: string
-    cost: number
-    price: number
-    MRP: number
-    stock: number
-  }[]
-  created_at: string
-  updated_at: string
-}
-
-// Add these interfaces after the existing MediaItem interface
-interface EditorBlock {
-  data: {
-    text?: string;
-    [key: string]: any;
-  };
-  [key: string]: any;
-}
-
-interface EditorData {
-  time: number;
-  blocks: EditorBlock[];
-  version: string;
-}
-
-interface GeneratedSku {
-  sku: string;
-  combination: string[];
-  stock: number;
-}
-
-interface StockDetails {
-  rows: StockRow[];
-}
-
-interface StockRow {
-  group: string;
-  stock: number;
-  dom: string;
-  shelfLife: string;
-}
-
-interface MediaPreview {
-  url: string;
-  mediaType: 'image' | 'video';
-  type: 'primary' | 'additional';
-  index?: number;
-}
-
-interface AttributeOption {
-  value: string;
-  label: string;
-  type: string;
-}
-
-interface OptionValue {
-  id: number;
-  attribute: string;
-  value: string;
-  visual: string;
-  type: string;
-}
-
-interface SkuDetails {
-  upc: string;
-  collection: string;
-  cost: number;
-  price: number;
-  mrp: number;
-}
-
-// Update the fetchProduct function to sync options and SKUs
-const fetchProduct = async () => {
-  try {
-    isLoading.value = true
-    loadError.value = null
-
-    const url = "https://commerce-tarframework.turso.io/v2/pipeline"
-    const authToken = "eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJhIjoicnciLCJpYXQiOjE3Mjk2NzQwNjQsImlkIjoiN2ZiNTFhMTgtYjU1My00Y2M2LTkwZWItZDE0ZTcxNDI5ODlhIn0.zxIjODPlBzNcAgQQ70xZj2sI7j7RSAHpYPQUtvyoAHDb4nLGzHAPiVvnJ6qeK7-00F8A6Lz__CSPjdITPZ31BQ"
-
-    const response = await fetch(url, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${authToken}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        requests: [{
-          type: "execute",
-          stmt: {
-            sql: "SELECT * FROM products WHERE id = ?",
-            args: [{ type: 'integer', value: productId }]
-          }
-        }]
-      }),
-    })
-
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`)
-    }
-
-    const result = await response.json()
-    const productData = result?.results?.[0]?.response?.result?.rows?.[0]
-
-    if (!productData) {
-      throw new Error('Product not found')
-    }
-
-    // Map the row data to product object
-    product.value = {
-      id: Number(productData[0].value),
-      type: productData[1].value,
-      product_name: productData[2].value,
-      description: productData[3].value,
-      medias: JSON.parse(productData[4].value),
-      unit: productData[5].value,
-      category: productData[6].value,
-      option1: productData[7].value ? JSON.parse(productData[7].value) : null,
-      option2: productData[8].value ? JSON.parse(productData[8].value) : null,
-      option3: productData[9].value ? JSON.parse(productData[9].value) : null,
-      totalstock: Number(productData[10].value),
-      items: JSON.parse(productData[11].value),
-      created_at: productData[12].value,
-      updated_at: productData[13].value
-    }
-
-    // Sync basic form data
-    selectedType.value = product.value.type
-    productName.value = product.value.product_name
-    primaryMedia.value = product.value.medias.primary
-    additionalMedia.value = product.value.medias.additional
-    selectedUnit.value = product.value.unit
-    category.value = product.value.category
-
-    // Sync options from option1, option2, option3
-    if (product.value.option1) {
-      const [attr1, values1] = Object.entries(product.value.option1)[0]
-      selectedAttributes.value['4'] = attr1
-      selectedOptions.value['4'] = Array.isArray(values1) ? values1 : [values1]
-    }
-    if (product.value.option2) {
-      const [attr2, values2] = Object.entries(product.value.option2)[0]
-      selectedAttributes.value['5'] = attr2
-      selectedOptions.value['5'] = Array.isArray(values2) ? values2 : [values2]
-    }
-    if (product.value.option3) {
-      const [attr3, values3] = Object.entries(product.value.option3)[0]
-      selectedAttributes.value['6'] = attr3
-      selectedOptions.value['6'] = Array.isArray(values3) ? values3 : [values3]
-    }
-
-    // Sync SKU details and stock
-    product.value.items.forEach(item => {
-      // Initialize SKU details
-      skuDetailsData.value[item.SKU] = {
-        upc: item.upc,
-        collection: item.collection,
-        cost: item.cost,
-        price: item.price,
-        mrp: item.MRP
-      }
-
-      // Initialize stock details with a single row
-      stockDetails.value[item.SKU] = {
-        rows: [{
-          group: '001',
-          stock: item.stock,
-          dom: '',
-          shelfLife: ''
-        }]
-      }
-
-      // Initialize SKU media if it exists
-      try {
-        const mediaData = JSON.parse(item.medias)
-        skuMedia.value[item.SKU] = {
-          primary: mediaData.primary,
-          additional: mediaData.additional || []
-        }
-      } catch (e) {
-        console.error('Failed to parse SKU media:', e)
-        skuMedia.value[item.SKU] = {
-          primary: null,
-          additional: []
-        }
-      }
-    })
-
-  } catch (error) {
-    console.error('Failed to fetch product:', error)
-    loadError.value = 'Failed to load product. Please try again.'
-  } finally {
-    isLoading.value = false
-  }
-}
-
-// Update the saveProduct function
-const saveProduct = async () => {
-  if (!product.value || isSaving.value) return
+// Helper functions
+const handleMultiSelectUpdate = (rowNum: string, value: string) => {
+  const currentValues = selectedOptions.value[rowNum]
+  const index = currentValues.indexOf(value)
   
-  try {
-    isSaving.value = true
-
-    // Create option objects from selected attributes and options
-    const option1 = selectedAttributes.value['4'] && selectedOptions.value['4'].length 
-      ? { [selectedAttributes.value['4']]: selectedOptions.value['4'] }
-      : null
-      
-    const option2 = selectedAttributes.value['5'] && selectedOptions.value['5'].length 
-      ? { [selectedAttributes.value['5']]: selectedOptions.value['5'] }
-      : null
-      
-    const option3 = selectedAttributes.value['6'] && selectedOptions.value['6'].length 
-      ? { [selectedAttributes.value['6']]: selectedOptions.value['6'] }
-      : null
-
-    // Map generated SKUs to items with their details
-    const items = generatedSkus.value.map(sku => ({
-      SKU: sku.sku,
-      desc: sku.combination.join(', '),
-      upc: skuDetailsData.value[sku.sku]?.upc || '',
-      medias: JSON.stringify({
-        primary: skuMedia.value[sku.sku]?.primary || null,
-        additional: skuMedia.value[sku.sku]?.additional || []
-      }),
-      collection: skuDetailsData.value[sku.sku]?.collection || '',
-      cost: Number(skuDetailsData.value[sku.sku]?.cost || 0),
-      price: Number(skuDetailsData.value[sku.sku]?.price || 0),
-      MRP: Number(skuDetailsData.value[sku.sku]?.mrp || 0),
-      stock: getSkuTotalStock(sku.sku) || 0
-    }))
-
-    // Calculate total stock from all SKUs
-    const totalstock = items.reduce((sum, item) => sum + item.stock, 0)
-
-    // Update the product value with all changes
-    product.value = {
-      ...product.value,
-      type: selectedType.value,
-      product_name: productName.value,
-      medias: {
-        primary: primaryMedia.value,
-        additional: additionalMedia.value
-      },
-      unit: selectedUnit.value,
-      category: category.value,
-      option1: option1 ? JSON.stringify(option1) : null,
-      option2: option2 ? JSON.stringify(option2) : null,
-      option3: option3 ? JSON.stringify(option3) : null,
-      totalstock,
-      items
-    }
-
-    const url = "https://commerce-tarframework.turso.io/v2/pipeline"
-    const authToken = "eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJhIjoicnciLCJpYXQiOjE3Mjk2NzQwNjQsImlkIjoiN2ZiNTFhMTgtYjU1My00Y2M2LTkwZWItZDE0ZTcxNDI5ODlhIn0.zxIjODPlBzNcAgQQ70xZj2sI7j7RSAHpYPQUtvyoAHDb4nLGzHAPiVvnJ6qeK7-00F8A6Lz__CSPjdITPZ31BQ"
-
-    const response = await fetch(url, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${authToken}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        requests: [{
-          type: "execute",
-          stmt: {
-            sql: `UPDATE products SET 
-              type = ?,
-              product_name = ?,
-              description = ?,
-              medias = ?,
-              unit = ?,
-              category = ?,
-              option1 = ?,
-              option2 = ?,
-              option3 = ?,
-              totalstock = ?,
-              items = ?
-              WHERE id = ?`,
-            args: [
-              { type: 'text', value: product.value.type },
-              { type: 'text', value: product.value.product_name },
-              { type: 'text', value: product.value.description },
-              { type: 'text', value: JSON.stringify(product.value.medias) },
-              { type: 'text', value: product.value.unit },
-              { type: 'text', value: product.value.category },
-              { type: 'text', value: product.value.option1 },
-              { type: 'text', value: product.value.option2 },
-              { type: 'text', value: product.value.option3 },
-              { type: 'integer', value: String(product.value.totalstock) },
-              { type: 'text', value: JSON.stringify(product.value.items) },
-              { type: 'integer', value: String(product.value.id) }
-            ]
-          }
-        }]
-      }),
-    })
-
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`)
-    }
-
-    // Navigate back to products page after successful save
-    navigateTo('/products')
-
-  } catch (error) {
-    console.error('Failed to save product:', error)
-  } finally {
-    isSaving.value = false
+  if (index === -1) {
+    selectedOptions.value[rowNum] = [...currentValues, value]
+  } else {
+    selectedOptions.value[rowNum] = currentValues.filter(v => v !== value)
   }
 }
 
-// Navigation
-const goBack = () => {
-  navigateTo('/products')
+const selectedOptionsString = (rowNum: string): string => {
+  return selectedOptions.value[rowNum][0] || ''
 }
 
-onMounted(() => {
-  fetchProduct()
-})
+const getSkuMedia = (sku: string | undefined) => {
+  if (!sku) return { primary: null, additional: [] }
+  return skuMedia.value[sku] || { primary: null, additional: [] }
+}
 
-// Add computed properties
-const generatedSkus = computed(() => {
-  // Only proceed if we have name and category
-  if (!productName.value || !category.value) {
-    return []
-  }
-
-  // Get selected attributes (rows 4,5,6 that have both attribute and values selected)
-  const selectedAttrs = ['4', '5', '6'].filter(row => 
-    selectedAttributes.value[row] && 
-    selectedOptions.value[row] && 
-    selectedOptions.value[row].length > 0
-  )
-
-  if (selectedAttrs.length === 0) {
-    return []
-  }
-
-  // Get all possible combinations
-  const combinations: string[][] = []
-  
-  const generateCombinations = (current: string[], index: number) => {
-    if (index === selectedAttrs.length) {
-      combinations.push([...current])
-      return
-    }
-    
-    const rowNum = selectedAttrs[index]
-    const attribute = selectedAttributes.value[rowNum]
-    const values = selectedOptions.value[rowNum]
-
-    for (const value of values) {
-      current.push(`${attribute}:${value}`)
-      generateCombinations(current, index + 1)
-      current.pop()
-    }
-  }
-  
-  generateCombinations([], 0)
-  
-  return combinations.map(combination => {
-    const namePrefix = productName.value.slice(0, 3).toUpperCase()
-    const typeIndicator = selectedType.value
-    const categoryPrefix = category.value.slice(0, 3).toUpperCase()
-    
-    const attributeSuffix = combination.map(pair => {
-      const [attr, value] = pair.split(':')
-      return value.slice(0, 3).toUpperCase()
-    }).join('')
-    
-    return {
-      sku: `${namePrefix}-${typeIndicator}-${categoryPrefix}-${attributeSuffix}`,
-      combination: combination.map(pair => {
-        const [attr, value] = pair.split(':')
-        return `${attr}: ${value}`
-      }),
-      stock: 0
-    }
-  })
-})
+// Remove all other duplicate declarations of these functions
 
 // Add these methods after the existing ones
 const toggleType = () => {
@@ -644,21 +273,6 @@ const getFilteredOptions = (rowNum: string) => {
   )
 }
 
-const selectedOptionsString = (rowNum: string): string => {
-  return selectedOptions.value[rowNum][0] || ''
-}
-
-const handleMultiSelectUpdate = (rowNum: string, value: string) => {
-  const currentValues = selectedOptions.value[rowNum]
-  const index = currentValues.indexOf(value)
-  
-  if (index === -1) {
-    selectedOptions.value[rowNum] = [...currentValues, value]
-  } else {
-    selectedOptions.value[rowNum] = currentValues.filter(v => v !== value)
-  }
-}
-
 const openSkuDetailsSheet = (sku: GeneratedSku) => {
   selectedSkuDetails.value = sku
   showSkuDetailsSheet.value = true
@@ -704,12 +318,6 @@ onMounted(async () => {
     loadError.value = 'Failed to load data. Please try again.'
   }
 })
-
-// Add this ref for tracking pending changes
-const pendingAttributeChange = ref<{
-  rowNum: string;
-  newValue: string;
-} | null>(null)
 
 // Add these methods for SKU details management
 
@@ -937,6 +545,531 @@ const confirmDateSelection = () => {
   showDatePickerSheet.value = false
   selectedRowIndex.value = null
 }
+
+const confirmAttributeChange = () => {
+  if (pendingAttributeChange.value) {
+    const { rowNum, newValue } = pendingAttributeChange.value
+    applyAttributeChange(rowNum, newValue)
+  }
+  showConfirmationSheet.value = false
+  pendingAttributeChange.value = null
+}
+
+// Add these interfaces at the top of the script section
+interface MediaItem {
+  url: string
+  mediaType: 'image' | 'video'
+}
+
+interface Product {
+  id: number
+  storeid: string
+  type: string
+  prodtype: 'physical' | 'digital' | 'service'
+  productname: string
+  description: string
+  medias: {
+    primary: MediaItem | null
+    additional: MediaItem[]
+  }
+  handle: string
+  pagetitle: string
+  metadesc: string
+  unit: string
+  category: string
+  vendor: string
+  collections: string[]
+  tags: string[]
+  option1: any
+  option2: any
+  option3: any
+  totalstock: number
+  items: {
+    SKU: string
+    desc: string
+    upc: string
+    medias: string
+    collection: string
+    cost: number
+    price: number
+    MRP: number
+    stock: number
+  }[]
+  trackquantity: boolean
+  continueselling: boolean
+  status: 'draft' | 'published'
+  publishedat: string | null
+  saleschannels: string[]
+  visibility: 'visible' | 'hidden'
+  weight: number | null
+  weightunit: string
+  createdat: string
+  updatedat: string
+  active: boolean
+}
+
+interface EditorData {
+  time: number
+  blocks: any[]
+  version: string
+}
+
+interface GeneratedSku {
+  sku: string
+  combination: string[]
+  stock: number
+}
+
+interface StockRow {
+  group: string
+  stock: number
+  dom: string
+  shelfLife: string
+}
+
+interface StockDetails {
+  rows: StockRow[]
+}
+
+interface SkuDetails {
+  upc: string
+  collection: string
+  cost: number
+  price: number
+  mrp: number
+}
+
+interface MediaPreview {
+  url: string
+  mediaType: 'image' | 'video'
+  type: 'primary' | 'additional'
+  index?: number
+}
+
+interface AttributeOption {
+  value: string
+  label: string
+  type: string
+}
+
+interface OptionValue {
+  id: number
+  attribute: string
+  value: string
+  visual: string
+  type: string
+}
+
+// Add the fetchProduct function
+const fetchProduct = async () => {
+  try {
+    isLoading.value = true
+    loadError.value = null
+
+    const url = "https://commerce-tarframework.turso.io/v2/pipeline"
+    const authToken = "eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJhIjoicnciLCJpYXQiOjE3Mjk2NzQwNjQsImlkIjoiN2ZiNTFhMTgtYjU1My00Y2M2LTkwZWItZDE0ZTcxNDI5ODlhIn0.zxIjODPlBzNcAgQQ70xZj2sI7j7RSAHpYPQUtvyoAHDb4nLGzHAPiVvnJ6qeK7-00F8A6Lz__CSPjdITPZ31BQ"
+
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${authToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        requests: [{
+          type: "execute",
+          stmt: {
+            sql: "SELECT * FROM products WHERE id = ?",
+            args: [{ type: 'integer', value: productId }]
+          }
+        }]
+      }),
+    })
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`)
+    }
+
+    const result = await response.json()
+    const productData = result?.results?.[0]?.response?.result?.rows?.[0]
+
+    if (!productData) {
+      throw new Error('Product not found')
+    }
+
+    // Update the safeJsonParse function
+    const safeJsonParse = (value: string | null, defaultValue: any = null) => {
+      if (!value) return defaultValue
+      if (typeof value !== 'string') return value
+
+      try {
+        // First try direct parsing
+        return JSON.parse(value)
+      } catch (e) {
+        try {
+          // Try cleaning the string first
+          let cleaned = value
+            .replace(/\n/g, '\\n')
+            .replace(/\r/g, '\\r')
+            .replace(/\t/g, '\\t')
+            .replace(/\f/g, '\\f')
+            .replace(/[\u0000-\u0019]+/g, '')
+            .replace(/([{,]\s*)(\w+)\s*:/g, '$1"$2":')
+            .replace(/:\s*'([^']*)'/g, ':"$1"')
+            
+          // Special handling for escaped JSON strings
+          if (cleaned.includes('\\"')) {
+            cleaned = cleaned.replace(/\\"/g, '"')
+            cleaned = cleaned.replace(/""{/g, '"{')
+            cleaned = cleaned.replace(/}""/, '}"')
+          }
+            
+          return JSON.parse(cleaned)
+        } catch (e2) {
+          // If still fails, try one more time with the original value
+          try {
+            // Handle case where the string is already valid JSON but double-escaped
+            const unescaped = value.replace(/\\/g, '')
+            return JSON.parse(unescaped)
+          } catch (e3) {
+            console.error('JSON parse error after cleaning:', e3, 'Original value:', value)
+            return defaultValue
+          }
+        }
+      }
+    }
+
+    // Update the parseItems function
+    const parseItems = (itemsValue: string | null) => {
+      if (!itemsValue) return []
+      
+      try {
+        // If already an array, return as is
+        if (Array.isArray(itemsValue)) return itemsValue
+
+        // If it's a string, try to parse it directly first
+        if (typeof itemsValue === 'string') {
+          try {
+            const parsed = JSON.parse(itemsValue)
+            if (Array.isArray(parsed)) {
+              return parsed.map(item => ({
+                SKU: item.SKU || '',
+                desc: item.desc || '',
+                upc: item.upc || '',
+                medias: item.medias || '{"primary":null,"additional":[]}',
+                collection: item.collection || '',
+                cost: Number(item.cost || 0),
+                price: Number(item.price || 0),
+                MRP: Number(item.MRP || 0),
+                stock: Number(item.stock || 0)
+              }))
+            }
+          } catch (e) {
+            // If direct parsing fails, try cleaning the string
+            const cleaned = itemsValue
+              .replace(/\\"/g, '"') // Replace escaped quotes
+              .replace(/"{/g, '{')  // Remove quotes around objects
+              .replace(/}"/g, '}')  // Remove quotes around objects
+              .replace(/\\/g, '')   // Remove remaining backslashes
+
+            const parsed = JSON.parse(cleaned)
+            if (Array.isArray(parsed)) {
+              return parsed.map(item => ({
+                SKU: item.SKU || '',
+                desc: item.desc || '',
+                upc: item.upc || '',
+                medias: item.medias || '{"primary":null,"additional":[]}',
+                collection: item.collection || '',
+                cost: Number(item.cost || 0),
+                price: Number(item.price || 0),
+                MRP: Number(item.MRP || 0),
+                stock: Number(item.stock || 0)
+              }))
+            }
+          }
+        }
+
+        console.error('Items value is not an array:', itemsValue)
+        return []
+      } catch (e) {
+        console.error('Error parsing items:', e, 'Original value:', itemsValue)
+        return []
+      }
+    }
+
+    // Map the row data to product object
+    product.value = {
+      id: Number(productData[0].value),
+      storeid: productData[1].value,
+      type: productData[2].value,
+      prodtype: productData[3].value,
+      productname: productData[4].value,
+      description: productData[5].value,
+      medias: safeJsonParse(productData[6].value, { primary: null, additional: [] }),
+      handle: productData[7].value,
+      pagetitle: productData[8].value,
+      metadesc: productData[9].value,
+      unit: productData[10].value,
+      category: productData[11].value,
+      vendor: productData[12].value,
+      collections: safeJsonParse(productData[13].value, []),
+      tags: safeJsonParse(productData[14].value, []),
+      option1: safeJsonParse(productData[15].value),
+      option2: safeJsonParse(productData[16].value),
+      option3: safeJsonParse(productData[17].value),
+      items: parseItems(productData[18].value),
+      totalstock: Number(productData[19].value),
+      trackquantity: Boolean(productData[20].value),
+      continueselling: Boolean(productData[21].value),
+      status: productData[22].value,
+      publishedat: productData[23].value,
+      saleschannels: safeJsonParse(productData[24].value, []),
+      visibility: productData[25].value,
+      weight: productData[26].value ? Number(productData[26].value) : null,
+      weightunit: productData[27].value,
+      createdat: productData[28].value,
+      updatedat: productData[29].value,
+      active: Boolean(productData[30].value)
+    }
+
+    // Sync basic form data
+    selectedType.value = product.value.type
+    productName.value = product.value.productname
+    primaryMedia.value = product.value.medias.primary
+    additionalMedia.value = product.value.medias.additional
+    selectedUnit.value = product.value.unit
+    category.value = product.value.category
+
+    // Sync options from option1, option2, option3
+    if (product.value.option1) {
+      const [attr1, values1] = Object.entries(product.value.option1)[0]
+      selectedAttributes.value['4'] = attr1
+      selectedOptions.value['4'] = Array.isArray(values1) ? values1 : [values1]
+    }
+    if (product.value.option2) {
+      const [attr2, values2] = Object.entries(product.value.option2)[0]
+      selectedAttributes.value['5'] = attr2
+      selectedOptions.value['5'] = Array.isArray(values2) ? values2 : [values2]
+    }
+    if (product.value.option3) {
+      const [attr3, values3] = Object.entries(product.value.option3)[0]
+      selectedAttributes.value['6'] = attr3
+      selectedOptions.value['6'] = Array.isArray(values3) ? values3 : [values3]
+    }
+
+    // Sync SKU details and stock
+    product.value.items.forEach(item => {
+      // Initialize SKU details
+      skuDetailsData.value[item.SKU] = {
+        upc: item.upc,
+        collection: item.collection,
+        cost: item.cost,
+        price: item.price,
+        mrp: item.MRP
+      }
+
+      // Initialize stock details with a single row
+      stockDetails.value[item.SKU] = {
+        rows: [{
+          group: '001',
+          stock: item.stock,
+          dom: '',
+          shelfLife: ''
+        }]
+      }
+
+      // Initialize SKU media if it exists
+      try {
+        const mediaData = safeJsonParse(item.medias)
+        skuMedia.value[item.SKU] = {
+          primary: mediaData?.primary || null,
+          additional: mediaData?.additional || []
+        }
+      } catch (e) {
+        console.error('Failed to parse SKU media:', e)
+        skuMedia.value[item.SKU] = {
+          primary: null,
+          additional: []
+        }
+      }
+    })
+
+  } catch (error) {
+    console.error('Failed to fetch product:', error)
+    loadError.value = 'Failed to load product. Please try again.'
+  } finally {
+    isLoading.value = false
+  }
+}
+
+// Add the saveProduct function
+const saveProduct = async () => {
+  if (!product.value || isSaving.value) return
+  
+  try {
+    isSaving.value = true
+
+    // Create option objects from selected attributes and options
+    const option1 = selectedAttributes.value['4'] && selectedOptions.value['4'].length 
+      ? { [selectedAttributes.value['4']]: selectedOptions.value['4'] }
+      : null
+      
+    const option2 = selectedAttributes.value['5'] && selectedOptions.value['5'].length 
+      ? { [selectedAttributes.value['5']]: selectedOptions.value['5'] }
+      : null
+      
+    const option3 = selectedAttributes.value['6'] && selectedOptions.value['6'].length 
+      ? { [selectedAttributes.value['6']]: selectedOptions.value['6'] }
+      : null
+
+    // Update the product value with all changes
+    product.value = {
+      ...product.value,
+      type: selectedType.value,
+      productname: productName.value,
+      medias: {
+        primary: primaryMedia.value,
+        additional: additionalMedia.value
+      },
+      unit: selectedUnit.value,
+      category: category.value,
+      option1: option1 ? JSON.stringify(option1) : null,
+      option2: option2 ? JSON.stringify(option2) : null,
+      option3: option3 ? JSON.stringify(option3) : null,
+      items: product.value.items.map(item => ({
+        ...item,
+        medias: JSON.stringify({
+          primary: skuMedia.value[item.SKU]?.primary || null,
+          additional: skuMedia.value[item.SKU]?.additional || []
+        }),
+        upc: skuDetailsData.value[item.SKU]?.upc || '',
+        collection: skuDetailsData.value[item.SKU]?.collection || '',
+        cost: Number(skuDetailsData.value[item.SKU]?.cost || 0),
+        price: Number(skuDetailsData.value[item.SKU]?.price || 0),
+        MRP: Number(skuDetailsData.value[item.SKU]?.mrp || 0),
+        stock: getSkuTotalStock(item.SKU) || 0
+      }))
+    }
+
+    const url = "https://commerce-tarframework.turso.io/v2/pipeline"
+    const authToken = "eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJhIjoicnciLCJpYXQiOjE3Mjk2NzQwNjQsImlkIjoiN2ZiNTFhMTgtYjU1My00Y2M2LTkwZWItZDE0ZTcxNDI5ODlhIn0.zxIjODPlBzNcAgQQ70xZj2sI7j7RSAHpYPQUtvyoAHDb4nLGzHAPiVvnJ6qeK7-00F8A6Lz__CSPjdITPZ31BQ"
+
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${authToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        requests: [{
+          type: "execute",
+          stmt: {
+            sql: `UPDATE products SET 
+              type = ?,
+              productname = ?,
+              description = ?,
+              medias = ?,
+              unit = ?,
+              category = ?,
+              option1 = ?,
+              option2 = ?,
+              option3 = ?,
+              items = ?
+              WHERE id = ?`,
+            args: [
+              { type: 'text', value: product.value.type },
+              { type: 'text', value: product.value.productname },
+              { type: 'text', value: product.value.description },
+              { type: 'text', value: JSON.stringify(product.value.medias) },
+              { type: 'text', value: product.value.unit },
+              { type: 'text', value: product.value.category },
+              { type: 'text', value: product.value.option1 },
+              { type: 'text', value: product.value.option2 },
+              { type: 'text', value: product.value.option3 },
+              { type: 'text', value: JSON.stringify(product.value.items) },
+              { type: 'integer', value: String(product.value.id) }
+            ]
+          }
+        }]
+      }),
+    })
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`)
+    }
+
+    // Navigate back to products page after successful save
+    navigateTo('/products')
+
+  } catch (error) {
+    console.error('Failed to save product:', error)
+  } finally {
+    isSaving.value = false
+  }
+}
+
+// Add this computed property after other refs
+const generatedSkus = computed(() => {
+  // Only proceed if we have name and category
+  if (!productName.value || !category.value) {
+    return []
+  }
+
+  // Get selected attributes (rows 4,5,6 that have both attribute and values selected)
+  const selectedAttrs = ['4', '5', '6'].filter(row => 
+    selectedAttributes.value[row] && 
+    selectedOptions.value[row] && 
+    selectedOptions.value[row].length > 0
+  )
+
+  if (selectedAttrs.length === 0) {
+    return []
+  }
+
+  // Get all possible combinations
+  const combinations: string[][] = []
+  
+  const generateCombinations = (current: string[], index: number) => {
+    if (index === selectedAttrs.length) {
+      combinations.push([...current])
+      return
+    }
+    
+    const rowNum = selectedAttrs[index]
+    const attribute = selectedAttributes.value[rowNum]
+    const values = selectedOptions.value[rowNum]
+
+    for (const value of values) {
+      current.push(`${attribute}:${value}`)
+      generateCombinations(current, index + 1)
+      current.pop()
+    }
+  }
+  
+  generateCombinations([], 0)
+  
+  // Generate SKUs for each combination
+  return combinations.map(combination => {
+    const namePrefix = productName.value.slice(0, 3).toUpperCase()
+    const typeIndicator = selectedType.value
+    const categoryPrefix = category.value.slice(0, 3).toUpperCase()
+    
+    // Create attribute suffix by taking first 3 letters of each value
+    const attributeSuffix = combination.map(pair => {
+      const [attr, value] = pair.split(':')
+      return value.slice(0, 3).toUpperCase()
+    }).join('')
+    
+    return {
+      sku: `${namePrefix}-${typeIndicator}-${categoryPrefix}-${attributeSuffix}`,
+      combination: combination.map(pair => {
+        const [attr, value] = pair.split(':')
+        return `${attr}: ${value}`
+      }),
+      stock: 0
+    }
+  })
+})
 </script>
 
 <template>
