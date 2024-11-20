@@ -33,6 +33,7 @@ import List from '@editorjs/list'
 import Paragraph from '@editorjs/paragraph'
 import ImageTool from '@editorjs/image'
 import Table from '@editorjs/table'
+import { Switch } from '@/components/ui/switch'
 
 interface AttributeOption {
   value: string
@@ -187,12 +188,12 @@ const saveProduct = async () => {
     const vendor = ref('')
     const collections = ref<string[]>([])
     const tags = ref<string[]>([])
-    const trackQuantity = ref(true)
-    const continueSelling = ref(false)
+    const trackQuantity = ref('yes')
+    const continueSelling = ref('no')
     const status = ref<'draft' | 'published'>('draft')
     const saleChannels = ref<string[]>([])
-    const visibility = ref<'visible' | 'hidden'>('visible')
-    const weight = ref<number | null>(null)
+    const visibility = ref('hidden')
+    const weight = ref(0)
     const weightUnit = ref('kg')
 
     // Add these before the values array
@@ -208,6 +209,7 @@ const saveProduct = async () => {
       ? JSON.stringify({ [selectedAttributes.value['6']]: selectedOptions.value['6'] })
       : ''
 
+    // Fix the values array syntax
     const values = [
       'default-store', // storeid - replace with actual store ID
       selectedType.value || '',
@@ -1164,9 +1166,15 @@ const continueSelling = ref('no')
 const status = ref('draft')
 const publishedAt = ref('')
 const salesChannels = ref(['online'])
-const visibility = ref('visible')
+const visibility = ref('hidden')
 const weight = ref(0)
 const weightUnit = ref('kg')
+
+// Add weightUnits array
+const weightUnits = [
+  { value: 'kg', label: 'Kg' },
+  { value: 'g', label: 'Gram' }
+]
 
 // Add a watcher for tags input
 watch(tagsInput, (newValue) => {
@@ -2201,10 +2209,16 @@ onMounted(() => {
     <!-- Add this new Sheet component after your existing sheets -->
     <Sheet v-model:open="showProductSettingsSheet">
       <SheetContent side="right" class="w-full sm:w-[400px]">
+        <SheetHeader>
+          <SheetTitle>Product Settings</SheetTitle>
+          <SheetDescription>
+            Configure product details and settings
+          </SheetDescription>
+        </SheetHeader>
+        
         <div class="flex flex-col h-full">
           <!-- Header -->
           <div class="flex items-center justify-between p-4 border-b">
-            <h2 class="text-lg font-semibold">Product Settings</h2>
             <Button 
               variant="ghost" 
               @click="saveProduct"
@@ -2265,33 +2279,29 @@ onMounted(() => {
                 </div>
               </div>
 
+              <!-- Track Quantity switch -->
               <div class="flex items-center border-b">
                 <div class="w-32 p-3 text-sm font-medium">Track Quantity</div>
                 <div class="flex-1 p-3">
-                  <Select v-model="trackQuantity">
-                    <SelectTrigger class="w-24">
-                      <SelectValue placeholder="Select" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="yes">Yes</SelectItem>
-                      <SelectItem value="no">No</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <Switch
+                    v-model="trackQuantity"
+                    @update:model-value="val => trackQuantity = val ? 'yes' : 'no'"
+                    :pressed="trackQuantity === 'yes'"
+                    class="data-[state=checked]:bg-primary"
+                  />
                 </div>
               </div>
 
+              <!-- Continue Selling switch -->
               <div class="flex items-center border-b">
                 <div class="w-32 p-3 text-sm font-medium">Cont. Sell</div>
                 <div class="flex-1 p-3">
-                  <Select v-model="continueSelling">
-                    <SelectTrigger class="w-24">
-                      <SelectValue placeholder="Select" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="yes">Yes</SelectItem>
-                      <SelectItem value="no">No</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <Switch
+                    v-model="continueSelling"
+                    @update:model-value="val => continueSelling = val ? 'yes' : 'no'"
+                    :pressed="continueSelling === 'yes'"
+                    class="data-[state=checked]:bg-primary"
+                  />
                 </div>
               </div>
 
@@ -2321,10 +2331,14 @@ onMounted(() => {
                 </div>
               </div>
 
+              <!-- Replace the Sales Channels select -->
               <div class="flex items-center border-b">
                 <div class="w-32 p-3 text-sm font-medium">Sales Channels</div>
                 <div class="flex-1 p-3">
-                  <Select v-model="salesChannels" multiple>
+                  <Select 
+                    :model-value="salesChannels[0]" 
+                    @update:model-value="(val) => salesChannels = [val]"
+                  >
                     <SelectTrigger>
                       <SelectValue :placeholder="`${salesChannels.length} channels selected`" />
                     </SelectTrigger>
@@ -2336,46 +2350,42 @@ onMounted(() => {
                 </div>
               </div>
 
+              <!-- Visibility switch -->
               <div class="flex items-center border-b">
                 <div class="w-32 p-3 text-sm font-medium">Visibility</div>
                 <div class="flex-1 p-3">
-                  <Select v-model="visibility">
-                    <SelectTrigger class="w-24">
-                      <SelectValue placeholder="Select" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="visible">Visible</SelectItem>
-                      <SelectItem value="hidden">Hidden</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <Switch
+                    v-model="visibility"
+                    @update:model-value="val => visibility = val ? 'visible' : 'hidden'"
+                    :pressed="visibility === 'visible'"
+                    class="data-[state=checked]:bg-primary"
+                  />
                 </div>
               </div>
 
-              <div class="flex items-center border-b">
+              <!-- Update the Weight row with dropdown -->
+              <div class="flex items-center">
                 <div class="w-32 p-3 text-sm font-medium">Weight</div>
-                <div class="flex-1">
+                <div class="flex-1 p-3 flex items-center gap-2">
                   <input
                     v-model.number="weight"
                     type="number"
                     step="0.01"
                     placeholder="0.00"
-                    class="w-full p-3 bg-transparent border-0 focus:outline-none text-sm"
+                    class="w-24 p-2 bg-transparent border rounded focus:outline-none text-sm"
                   />
-                </div>
-              </div>
-
-              <div class="flex items-center">
-                <div class="w-32 p-3 text-sm font-medium">Weight Unit</div>
-                <div class="flex-1 p-3">
                   <Select v-model="weightUnit">
                     <SelectTrigger class="w-24">
-                      <SelectValue placeholder="Select" />
+                      <SelectValue :placeholder="weightUnit" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="kg">kg</SelectItem>
-                      <SelectItem value="g">g</SelectItem>
-                      <SelectItem value="lb">lb</SelectItem>
-                      <SelectItem value="oz">oz</SelectItem>
+                      <SelectItem 
+                        v-for="unit in weightUnits" 
+                        :key="unit.value" 
+                        :value="unit.value"
+                      >
+                        {{ unit.label }}
+                      </SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -2695,6 +2705,24 @@ input:-webkit-autofill:active {
     outline: none !important;
     box-shadow: none !important;
   }
+}
+
+/* Add these styles to your existing <style> section */
+:deep(.switch[data-state=checked]) {
+  @apply bg-primary;
+}
+
+:deep(.switch[data-state=checked] .switch-thumb) {
+  @apply translate-x-[calc(100%-2px)];
+}
+
+:deep(.switch-thumb) {
+  @apply transform transition-transform duration-100;
+}
+
+/* Update the select trigger styles */
+:deep(.select-trigger) {
+  @apply h-9 px-3 py-1;
 }
 </style>
 
