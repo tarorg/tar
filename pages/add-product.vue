@@ -195,6 +195,19 @@ const saveProduct = async () => {
     const weight = ref<number | null>(null)
     const weightUnit = ref('kg')
 
+    // Add these before the values array
+    const option1Value = selectedAttributes.value['4'] && selectedOptions.value['4'].length 
+      ? JSON.stringify({ [selectedAttributes.value['4']]: selectedOptions.value['4'] })
+      : ''
+    
+    const option2Value = selectedAttributes.value['5'] && selectedOptions.value['5'].length 
+      ? JSON.stringify({ [selectedAttributes.value['5']]: selectedOptions.value['5'] })
+      : ''
+    
+    const option3Value = selectedAttributes.value['6'] && selectedOptions.value['6'].length 
+      ? JSON.stringify({ [selectedAttributes.value['6']]: selectedOptions.value['6'] })
+      : ''
+
     const values = [
       'default-store', // storeid - replace with actual store ID
       selectedType.value || '',
@@ -213,9 +226,9 @@ const saveProduct = async () => {
       vendor.value || '',
       JSON.stringify(collections.value),
       JSON.stringify(tags.value),
-      option1,
-      option2,
-      option3,
+      option1Value,
+      option2Value,
+      option3Value,
       JSON.stringify(generatedSkus.value.map(sku => ({
         SKU: sku.sku,
         desc: '',
@@ -230,7 +243,7 @@ const saveProduct = async () => {
         MRP: Number(skuDetailsData.value[sku.sku]?.mrp || 0),
         stock: getSkuTotalStock(sku.sku) || 0
       }))),
-      generatedSkus.value.reduce((sum, sku) => sum + (getSkuTotalStock(sku.sku) || 0), 0),
+      generatedSkus.value.reduce((sum: number, sku) => sum + (getSkuTotalStock(sku.sku) || 0), 0),
       trackQuantity.value,
       continueSelling.value,
       status.value,
@@ -242,25 +255,6 @@ const saveProduct = async () => {
 
     const url = "https://commerce-tarframework.turso.io/v2/pipeline"
     const authToken = "eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJhIjoicnciLCJpYXQiOjE3Mjk2NzQwNjQsImlkIjoiN2ZiNTFhMTgtYjU1My00Y2M2LTkwZWItZDE0ZTcxNDI5ODlhIn0.zxIjODPlBzNcAgQQ70xZj2sI7j7RSAHpYPQUtvyoAHDb4nLGzHAPiVvnJ6qeK7-00F8A6Lz__CSPjdITPZ31BQ"
-
-    // Format options as JSON objects
-    const option1 = selectedAttributes.value['4'] && selectedOptions.value['4'].length 
-      ? JSON.stringify({ [selectedAttributes.value['4']]: selectedOptions.value['4'] })
-      : ''
-      
-    const option2 = selectedAttributes.value['5'] && selectedOptions.value['5'].length 
-      ? JSON.stringify({ [selectedAttributes.value['5']]: selectedOptions.value['5'] })
-      : ''
-      
-    const option3 = selectedAttributes.value['6'] && selectedOptions.value['6'].length 
-      ? JSON.stringify({ [selectedAttributes.value['6']]: selectedOptions.value['6'] })
-      : ''
-
-    console.log('Options formatted as:', {
-      option1: option1 ? JSON.parse(option1) : null,
-      option2: option2 ? JSON.parse(option2) : null,
-      option3: option3 ? JSON.parse(option3) : null
-    })
 
     const response = await fetch(url, {
       method: "POST",
@@ -1158,6 +1152,32 @@ const openMediaPreview = (media: MediaItem, type: 'primary' | 'additional', inde
   }
   showMediaPreviewSheet.value = true
 }
+
+// Add this new Sheet component after your existing sheets
+const showProductSettingsSheet = ref(false)
+const handle = ref('')
+const pageTitle = ref('')
+const metaDesc = ref('')
+const tagsInput = ref('')
+const trackQuantity = ref('yes')
+const continueSelling = ref('no')
+const status = ref('draft')
+const publishedAt = ref('')
+const salesChannels = ref(['online'])
+const visibility = ref('visible')
+const weight = ref(0)
+const weightUnit = ref('kg')
+
+// Add a watcher for tags input
+watch(tagsInput, (newValue) => {
+  tags.value = newValue.split(',').map(tag => tag.trim()).filter(tag => tag)
+})
+
+// Initialize publishedAt with current date/time
+onMounted(() => {
+  const now = new Date()
+  publishedAt.value = now.toISOString().slice(0, 16)
+})
 </script>
 
 <template>
@@ -1174,11 +1194,11 @@ const openMediaPreview = (media: MediaItem, type: 'primary' | 'additional', inde
       <div>
         <Button 
           variant="ghost" 
-          @click="saveProduct"
-          class="px-4"
-          :disabled="isSaving"
+          size="icon"
+          @click="showProductSettingsSheet = true"
+          class="h-9 w-9"
         >
-          {{ isSaving ? 'Saving...' : 'Save' }}
+          <ChevronRight class="h-5 w-5" />
         </Button>
       </div>
     </header>
@@ -2173,6 +2193,194 @@ const openMediaPreview = (media: MediaItem, type: 'primary' | 'additional', inde
             >
               remove
             </button>
+          </div>
+        </div>
+      </SheetContent>
+    </Sheet>
+
+    <!-- Add this new Sheet component after your existing sheets -->
+    <Sheet v-model:open="showProductSettingsSheet">
+      <SheetContent side="right" class="w-full sm:w-[400px]">
+        <div class="flex flex-col h-full">
+          <!-- Header -->
+          <div class="flex items-center justify-between p-4 border-b">
+            <h2 class="text-lg font-semibold">Product Settings</h2>
+            <Button 
+              variant="ghost" 
+              @click="saveProduct"
+              :disabled="isSaving"
+            >
+              {{ isSaving ? 'Saving...' : 'Save' }}
+            </Button>
+          </div>
+
+          <!-- Settings Table -->
+          <div class="flex-1 overflow-y-auto">
+            <div class="border-b">
+              <div class="flex items-center border-b">
+                <div class="w-32 p-3 text-sm font-medium">Handle</div>
+                <div class="flex-1">
+                  <input
+                    v-model="handle"
+                    type="text"
+                    placeholder="product-handle"
+                    class="w-full p-3 bg-transparent border-0 focus:outline-none text-sm"
+                  />
+                </div>
+              </div>
+
+              <div class="flex items-center border-b">
+                <div class="w-32 p-3 text-sm font-medium">Page Title</div>
+                <div class="flex-1">
+                  <input
+                    v-model="pageTitle"
+                    type="text"
+                    placeholder="Page title"
+                    class="w-full p-3 bg-transparent border-0 focus:outline-none text-sm"
+                  />
+                </div>
+              </div>
+
+              <div class="flex items-center border-b">
+                <div class="w-32 p-3 text-sm font-medium">Meta Desc</div>
+                <div class="flex-1">
+                  <input
+                    v-model="metaDesc"
+                    type="text"
+                    placeholder="Meta description"
+                    class="w-full p-3 bg-transparent border-0 focus:outline-none text-sm"
+                  />
+                </div>
+              </div>
+
+              <div class="flex items-center border-b">
+                <div class="w-32 p-3 text-sm font-medium">Tags</div>
+                <div class="flex-1">
+                  <input
+                    v-model="tagsInput"
+                    type="text"
+                    placeholder="Add tags (comma separated)"
+                    class="w-full p-3 bg-transparent border-0 focus:outline-none text-sm"
+                  />
+                </div>
+              </div>
+
+              <div class="flex items-center border-b">
+                <div class="w-32 p-3 text-sm font-medium">Track Quantity</div>
+                <div class="flex-1 p-3">
+                  <Select v-model="trackQuantity">
+                    <SelectTrigger class="w-24">
+                      <SelectValue placeholder="Select" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="yes">Yes</SelectItem>
+                      <SelectItem value="no">No</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div class="flex items-center border-b">
+                <div class="w-32 p-3 text-sm font-medium">Cont. Sell</div>
+                <div class="flex-1 p-3">
+                  <Select v-model="continueSelling">
+                    <SelectTrigger class="w-24">
+                      <SelectValue placeholder="Select" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="yes">Yes</SelectItem>
+                      <SelectItem value="no">No</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div class="flex items-center border-b">
+                <div class="w-32 p-3 text-sm font-medium">Status</div>
+                <div class="flex-1 p-3">
+                  <Select v-model="status">
+                    <SelectTrigger class="w-24">
+                      <SelectValue placeholder="Select" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="draft">Draft</SelectItem>
+                      <SelectItem value="published">Published</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div class="flex items-center border-b">
+                <div class="w-32 p-3 text-sm font-medium">Published At</div>
+                <div class="flex-1">
+                  <input
+                    type="datetime-local"
+                    v-model="publishedAt"
+                    class="w-full p-3 bg-transparent border-0 focus:outline-none text-sm"
+                  />
+                </div>
+              </div>
+
+              <div class="flex items-center border-b">
+                <div class="w-32 p-3 text-sm font-medium">Sales Channels</div>
+                <div class="flex-1 p-3">
+                  <Select v-model="salesChannels" multiple>
+                    <SelectTrigger>
+                      <SelectValue :placeholder="`${salesChannels.length} channels selected`" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="online">Online Store</SelectItem>
+                      <SelectItem value="pos">Point of Sale</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div class="flex items-center border-b">
+                <div class="w-32 p-3 text-sm font-medium">Visibility</div>
+                <div class="flex-1 p-3">
+                  <Select v-model="visibility">
+                    <SelectTrigger class="w-24">
+                      <SelectValue placeholder="Select" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="visible">Visible</SelectItem>
+                      <SelectItem value="hidden">Hidden</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div class="flex items-center border-b">
+                <div class="w-32 p-3 text-sm font-medium">Weight</div>
+                <div class="flex-1">
+                  <input
+                    v-model.number="weight"
+                    type="number"
+                    step="0.01"
+                    placeholder="0.00"
+                    class="w-full p-3 bg-transparent border-0 focus:outline-none text-sm"
+                  />
+                </div>
+              </div>
+
+              <div class="flex items-center">
+                <div class="w-32 p-3 text-sm font-medium">Weight Unit</div>
+                <div class="flex-1 p-3">
+                  <Select v-model="weightUnit">
+                    <SelectTrigger class="w-24">
+                      <SelectValue placeholder="Select" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="kg">kg</SelectItem>
+                      <SelectItem value="g">g</SelectItem>
+                      <SelectItem value="lb">lb</SelectItem>
+                      <SelectItem value="oz">oz</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </SheetContent>
