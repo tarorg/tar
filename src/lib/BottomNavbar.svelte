@@ -1,24 +1,24 @@
 <script>
   const icons = {
-    home: 'icons/rectangle-horizontal.svg',
-    search: 'icons/square.svg',
-    user: 'icons/triangle.svg',
-    settings: 'icons/circle.svg'
+    console: 'icons/rectangle-horizontal.svg',
+    ai: 'icons/square.svg',
+    tasks: 'icons/triangle.svg',
+    a: 'icons/circle.svg'
   };
 </script>
 
 <nav class="bottom-navbar">
-  <a href="/">
-    <img src={icons.home} alt="Home" />
+  <a href="/console">
+    <img src={icons.console} alt="console" />
   </a>
-  <a href="/search">
-    <img src={icons.search} alt="Search" />
+  <a href="/ai">
+    <img src={icons.ai} alt="ai" />
   </a>
-  <a href="/profile">
-    <img src={icons.user} alt="Profile" />
+  <a href="/tasks">
+    <img src={icons.tasks} alt="tasks" />
   </a>
-  <a href="/settings">
-    <img src={icons.settings} alt="Settings" />
+  <a href="/a">
+    <img src={icons.a} alt="a" />
   </a>
 </nav>
 

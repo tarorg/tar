@@ -1,1 +1,0 @@
-<h1>Triangle Page</h1>
