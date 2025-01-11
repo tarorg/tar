@@ -33,16 +33,20 @@
 
 <div class="topbar-container">
   <div class="topbar">
-    <button class="icon" on:click={toggleDropdown}>{selectedIcon}</button>
+    <button class="icon" on:click={toggleDropdown} aria-expanded={isDropdownOpen}>{selectedIcon}</button>
     <input type="text" placeholder="Search..." bind:value={searchTerm} class="search-bar"/>
   </div>
   
   {#if isDropdownOpen}
-    <div class="dropdown">
+    <div class="dropdown" role="menu">
       {#each menuItems as item}
-        <div class="dropdown-item" on:click={() => selectItem(item.icon)}>
+        <button 
+          class="dropdown-item" 
+          role="menuitem"
+          on:click={() => selectItem(item.icon)}
+          on:keydown={e => e.key === 'Enter' && selectItem(item.icon)}>
           {item.icon} {item.text}
-        </div>
+        </button>
       {/each}
     </div>
   {/if}
@@ -132,6 +136,12 @@
     padding: 14px 20px;
     border-bottom: 1px solid #f5f5f5;
     transition: all 0.2s ease;
+    width: 100%;
+    text-align: left;
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 16px;  /* Increased from default */
   }
 
   .dropdown-item:hover {

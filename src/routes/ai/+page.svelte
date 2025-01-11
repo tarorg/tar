@@ -4,11 +4,35 @@
     
     let messages = [];
     let userInput = '';
-    
-    function handleSubmit() {
-        if (userInput.trim()) {
-            messages = [...messages, { text: userInput, sender: 'user' }];
-            userInput = '';
+    let isLoading = false;
+    let error = null;
+
+    async function handleSubmit() {
+        if (!userInput.trim()) return;
+        
+        const userMessage = { text: userInput, sender: 'user' };
+        messages = [...messages, userMessage];
+        const currentInput = userInput;
+        userInput = '';
+        isLoading = true;
+        error = null;
+
+        try {
+            const response = await fetch('/api/chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ message: currentInput })
+            });
+
+            if (!response.ok) throw new Error('Failed to get response');
+            
+            const data = await response.json();
+            messages = [...messages, { text: data.message, sender: 'assistant' }];
+        } catch (e) {
+            error = 'Failed to get response. Please try again.';
+            console.error(e);
+        } finally {
+            isLoading = false;
         }
     }
 </script>
@@ -22,6 +46,16 @@
                 <p>{message.text}</p>
             </div>
         {/each}
+        {#if isLoading}
+            <div class="message assistant loading">
+                <p>Thinking...</p>
+            </div>
+        {/if}
+        {#if error}
+            <div class="message error">
+                <p>{error}</p>
+            </div>
+        {/if}
     </div>
 </div>
 
@@ -30,8 +64,11 @@
         type="text" 
         bind:value={userInput} 
         placeholder="Type your message..."
+        disabled={isLoading}
     />
-    <button type="submit">Send</button>
+    <button type="submit" disabled={isLoading}>
+        {isLoading ? 'Sending...' : 'Send'}
+    </button>
 </form>
 
 <BottomNavbar />
@@ -69,6 +106,22 @@
         margin-left: auto;
     }
 
+    .message.assistant {
+        background: #f0f0f0;
+        color: #333;
+        margin-right: auto;
+    }
+
+    .message.error {
+        background: #fff0f0;
+        color: #d00;
+        margin-right: auto;
+    }
+
+    .message.loading {
+        opacity: 0.7;
+    }
+
     .message p {
         margin: 0;
     }
@@ -102,6 +155,11 @@
         border-radius: 8px;
         cursor: pointer;
         font-size: 1rem;
+    }
+
+    button:disabled {
+        background: #cccccc;
+        cursor: not-allowed;
     }
 
     button:hover {
