@@ -1,7 +1,14 @@
 <script>
+  import { selectedNav } from './stores/navigationStore';
+  
   let searchTerm = '';
   let isDropdownOpen = false;
-  let selectedIcon = '🎮';
+  let selectedIcon;
+
+  // Subscribe to the store
+  selectedNav.subscribe(value => {
+    selectedIcon = value || '🎮';  // Default to 🎮 if no value
+  });
 
   const menuItems = [
     { icon: '🌌', text: 'Space' },
@@ -19,7 +26,7 @@
   }
 
   function selectItem(icon) {
-    selectedIcon = icon;
+    selectedNav.select(icon);
     isDropdownOpen = false;
   }
 </script>
