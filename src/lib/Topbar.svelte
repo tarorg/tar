@@ -1,7 +1,7 @@
 <script>
   let searchTerm = '';
   let isDropdownOpen = false;
-  let selectedIcon = '🚀';
+  let selectedIcon = '🎮';
 
   const menuItems = [
     { icon: '🌌', text: 'Space' },
@@ -44,14 +44,16 @@
 <style>
   .topbar-container {
     font-family: 'General Sans', sans-serif;
-    position: relative;
+    position: fixed;
     width: 100%;
     max-width: 100vw;
     left: 0;
     right: 0;
+    top: 0;
     margin: 0;
     background: white;
     box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    z-index: 1000;
   }
 
   .topbar {
