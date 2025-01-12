@@ -18,14 +18,43 @@
         }
     }
 
-    let productTitle = "Untitled"; // Add this for title state
+    let productTitle = ""; // Remove default value for title state
     let productDescription = ''; // Add this for description state
+    let descriptionLoading = false;
 
     // Auto-resize textarea function
     function autoResize(e) {
         const textarea = e.target;
         textarea.style.height = 'auto';
         textarea.style.height = textarea.scrollHeight + 'px';
+    }
+
+    // AI Description Generation
+    async function generateDescription() {
+        if (!productTitle.trim() && !productDescription.trim()) return;
+        
+        descriptionLoading = true;
+        try {
+            const response = await fetch('/api/chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    message: `Generate a compelling product description for without any additional comments: ${productTitle}. Current description: ${productDescription}`
+                })
+            });
+
+            if (!response.ok) throw new Error('Failed to generate description');
+            
+            const data = await response.json();
+            // Clean the generated description and limit to 500 words
+            const cleanedDescription = data.message.replace(/Here is[^:]*:/, '').replace(/[^a-zA-Z0-9\s]/g, '').split(' ').slice(0, 500).join(' ');
+            productDescription = cleanedDescription;
+            autoResize({ target: document.querySelector('.description-input') });
+        } catch (error) {
+            console.error('Failed to generate description:', error);
+        } finally {
+            descriptionLoading = false;
+        }
     }
 </script>
 
@@ -79,13 +108,29 @@
                         {/each}
                     </div>
 
+                    <!-- Add AI trigger button -->
+                    <div class="ai-trigger">
+                        <button 
+                            class="ai-button" 
+                            on:click={generateDescription}
+                            disabled={descriptionLoading || (!productTitle.trim() && !productDescription.trim())}
+                            title="Generate AI description"
+                        >
+                            {#if descriptionLoading}
+                                <span class="loading-spinner"></span>
+                            {:else}
+                                <span class="sparkle">✨</span>
+                            {/if}
+                        </button>
+                    </div>
+
                     <!-- Add description section -->
                     <div class="description-container">
                         <textarea
                             bind:value={productDescription}
                             placeholder="Add a description..."
                             class="description-input"
-                            on:input={autoResize}
+                            on:focus={autoResize}
                         ></textarea>
                     </div>
                 </div>
@@ -286,5 +331,49 @@
     .description-input::placeholder {
         color: #94a3b8;
         opacity: 0.8;
+    }
+
+    .ai-trigger {
+        display: flex;
+        justify-content: flex-end;
+        margin-bottom: 1rem;
+    }
+
+    .ai-button {
+        padding: 0;
+        border: none;
+        background: none;
+        cursor: pointer;
+        transition: opacity 0.2s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .ai-button:hover {
+        opacity: 0.7;
+    }
+
+    .ai-button:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    .sparkle {
+        font-size: 1.5rem;
+        color: #94a3b8;
+    }
+
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+
+    .loading-spinner {
+        width: 1.25rem;
+        height: 1.25rem;
+        border: 2px solid #e2e8f0;
+        border-top-color: #94a3b8;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
     }
 </style>
