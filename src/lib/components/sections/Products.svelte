@@ -1,175 +1,205 @@
 <script>
-    let activeTab = 'core';
-    const topRowTabs = ['Core', 'Options', 'Properties', 'Variants'];
-    const bottomRowTabs = ['Branding'];
+    let currentTab = 'Core';
+    const tabs = ['Core', 'Options', 'Properties', 'Variants', 'Branding'];
+    
+    // Array to store preview URLs
+    let previewImages = Array(5).fill(null);
+
+    // Handle file upload
+    function handleFileUpload(event, index) {
+        const file = event.target.files[0];
+        if (file && file.type.startsWith('image/')) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                previewImages[index] = e.target.result;
+                previewImages = [...previewImages]; // trigger reactivity
+            };
+            reader.readAsDataURL(file);
+        }
+    }
 </script>
 
-<div class="section">
-    <h2>Products</h2>
-    
+<section class="w-full">
     <div class="tabs-container">
-        <div class="tabs-scroll">
-            <div class="tabs">
-                {#each topRowTabs as tab}
-                    <button 
-                        class="tab-button" 
-                        class:active={activeTab === tab.toLowerCase()} 
-                        on:click={() => activeTab = tab.toLowerCase()}>
-                        {tab}
-                    </button>
-                {/each}
-            </div>
-            <div class="tabs bottom-row">
-                {#each bottomRowTabs as tab}
-                    <button 
-                        class="tab-button" 
-                        class:active={activeTab === tab.toLowerCase()} 
-                        on:click={() => activeTab = tab.toLowerCase()}>
-                        {tab}
-                    </button>
-                {/each}
-            </div>
+        <nav class="tabs-header" role="tablist">
+            {#each tabs as tab}
+                <button
+                    role="tab"
+                    aria-selected={currentTab === tab}
+                    class="tab-button"
+                    class:active={currentTab === tab}
+                    on:click={() => currentTab = tab}
+                >
+                    {tab}
+                </button>
+            {/each}
+        </nav>
+
+        <div class="tab-content">
+            {#if currentTab === 'Core'}
+                <div class="tab-panel" role="tabpanel">
+                    <div class="upload-boxes">
+                        {#each previewImages as preview, i}
+                            <div class="upload-box">
+                                <input
+                                    type="file"
+                                    accept="image/*"
+                                    id="upload-{i}"
+                                    on:change={(e) => handleFileUpload(e, i)}
+                                    class="hidden-input"
+                                />
+                                <label for="upload-{i}" class="upload-label">
+                                    {#if preview}
+                                        <img src={preview} alt="Preview {i + 1}" class="preview-image" />
+                                    {:else}
+                                        <span class="upload-icon">+</span>
+                                    {/if}
+                                </label>
+                            </div>
+                        {/each}
+                    </div>
+                </div>
+            {:else if currentTab === 'Options'}
+                <div class="tab-panel" role="tabpanel">Options content here</div>
+            {:else if currentTab === 'Properties'}
+                <div class="tab-panel" role="tabpanel">Properties content here</div>
+            {:else if currentTab === 'Variants'}
+                <div class="tab-panel" role="tabpanel">Variants content here</div>
+            {:else if currentTab === 'Branding'}
+                <div class="tab-panel" role="tabpanel">Branding content here</div>
+            {/if}
         </div>
     </div>
-
-    <div class="tab-content">
-        {#if activeTab === 'core'}
-            <div class="notion-table">
-                <div class="table-row header">
-                    <div class="table-cell">Property</div>
-                    <div class="table-cell">Value</div>
-                </div>
-                <div class="table-row">
-                    <div class="table-cell">
-                        <div class="property-name">Product Name</div>
-                    </div>
-                    <div class="table-cell">
-                        <input type="text" placeholder="Enter product name">
-                    </div>
-                </div>
-                <div class="table-row">
-                    <div class="table-cell">
-                        <div class="property-name">SKU</div>
-                    </div>
-                    <div class="table-cell">
-                        <input type="text" placeholder="Enter SKU">
-                    </div>
-                </div>
-            </div>
-        {:else if activeTab === 'options'}
-            <div class="notion-table">
-                <div class="table-row">
-                    <div class="table-cell">Size Options</div>
-                    <div class="table-cell">
-                        <input type="text" placeholder="Add size options">
-                    </div>
-                </div>
-                <div class="table-row">
-                    <div class="table-cell">Color Options</div>
-                    <div class="table-cell">
-                        <input type="text" placeholder="Add color options">
-                    </div>
-                </div>
-            </div>
-        {/if}
-    </div>
-</div>
+</section>
 
 <style>
-    .section {
-        padding: 20px;
-        width: 100%;
-    }
     .tabs-container {
-        margin: 16px 0 24px 0;
         width: 100%;
+        margin: 1rem 0; /* Reduced from 2rem to 1rem */
+        overflow-x: auto; /* Enable horizontal scroll if needed */
     }
-    .tabs-scroll {
-        width: 100%;
-        overflow-x: auto;
-        -webkit-overflow-scrolling: touch;
-        scrollbar-width: none;  /* Firefox */
-        -ms-overflow-style: none;  /* IE and Edge */
-    }
-    .tabs-scroll::-webkit-scrollbar {
-        display: none; /* Chrome, Safari, Opera */
-    }
-    .tabs {
-        display: inline-flex;
-        gap: 1px;
-        background: #f0f0f0;
-        padding: 4px;
-        border-radius: 8px;
-        margin-bottom: 8px;
-        white-space: nowrap;
-    }
-    .tab-button {
-        padding: 6px 12px;
-        border: none;
-        background: none;
-        cursor: pointer;
-        border-radius: 6px;
-        font-size: 14px;
-        white-space: nowrap;
-        color: #4a4a4a;
-        transition: all 0.2s;
-    }
-    .tab-button.active {
-        background: white;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-        color: #000;
-    }
-    .notion-table {
-        width: 100%;
-        border-spacing: 0;
-        margin-top: 8px;
-    }
-    .table-row {
+
+    .tabs-header {
         display: flex;
-        border-bottom: 1px solid #eee;
-        min-height: 32px;
+        gap: 0.25rem; /* Reduced from 0.5rem */
+        border-bottom: 1px solid #e2e8f0;
+        margin-bottom: 1rem;
+        flex-wrap: wrap;
+        min-width: min-content; /* Prevents tabs from shrinking too much */
     }
-    .table-row.header {
-        font-weight: 500;
-        color: #6b6b6b;
-        font-size: 12px;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
+
+    .tab-button {
+        padding: 0.75rem 1rem; /* Reduced horizontal padding from 1.5rem */
+        border: none;
+        background: transparent;
+        cursor: pointer;
+        transition: all 0.2s;
+        position: relative;
+        color: #64748b;
+        white-space: nowrap; /* Prevent text wrapping inside buttons */
+        font-weight: 400; /* Regular weight for inactive tabs */
+        font-size: 1.125rem; /* Increased by 2px from default */
     }
-    .table-cell {
-        flex: 1;
-        padding: 8px;
-        min-width: 150px;
+
+    /* Responsive adjustments */
+    @media (max-width: 768px) {
+        .tabs-header {
+            gap: 0.125rem; /* Reduced from 0.25rem */
+        }
+
+        .tab-button {
+            padding: 0.5rem 0.75rem;
+            font-size: 1rem; /* Increased by 2px from 0.875rem */
+        }
+    }
+
+    @media (max-width: 480px) {
+        .tabs-container {
+            margin: 0.5rem 0; /* Reduced from 1rem to 0.5rem */
+        }
+
+        .tabs-header {
+            gap: 0.125rem;
+            justify-content: flex-start;
+        }
+
+        .tab-button {
+            padding: 0.5rem 0.5rem;
+            font-size: 0.875rem; /* Increased by 2px from 0.75rem */
+        }
+    }
+
+    .tab-button.active {
+        color: #0f172a;
+        font-weight: 700; /* Bold weight for active tab */
+    }
+
+    /* Remove the underline styles */
+    .tab-button.active::after {
+        display: none; /* Hide the underline */
+    }
+
+    .tab-content {
+        padding: 1rem 0;
+    }
+
+    .tab-panel {
+        animation: fadeIn 0.3s ease-in-out;
+    }
+
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+            transform: translateY(10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .upload-boxes {
+        display: flex;
+        gap: 1rem;
+        margin: 1rem 0;
+    }
+
+    .upload-box {
+        width: 50px;
+        height: 50px;
+        border: 1px solid #e2e8f0;
+        border-radius: 4px;
+        overflow: hidden;
+        position: relative;
+    }
+
+    .hidden-input {
+        display: none;
+    }
+
+    .upload-label {
+        width: 100%;
+        height: 100%;
         display: flex;
         align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        background: #f8fafc;
+        transition: background-color 0.2s;
     }
-    .property-name {
-        font-size: 14px;
-        color: #37352f;
+
+    .upload-label:hover {
+        background: #f1f5f9;
     }
-    input {
+
+    .upload-icon {
+        font-size: 1.5rem;
+        color: #94a3b8;
+    }
+
+    .preview-image {
         width: 100%;
-        padding: 4px 8px;
-        border: 1px solid transparent;
-        border-radius: 4px;
-        font-size: 14px;
-        background: transparent;
-        transition: all 0.2s;
-    }
-    input:hover {
-        background: rgba(55, 53, 47, 0.08);
-    }
-    input:focus {
-        background: white;
-        border-color: #37352f33;
-        outline: none;
-    }
-    @media (max-width: 640px) {
-        .section {
-            padding: 16px;
-        }
-        .table-cell {
-            min-width: 120px;
-        }
+        height: 100%;
+        object-fit: cover;
     }
 </style>
