@@ -17,6 +17,16 @@
             reader.readAsDataURL(file);
         }
     }
+
+    let productTitle = "Untitled"; // Add this for title state
+    let productDescription = ''; // Add this for description state
+
+    // Auto-resize textarea function
+    function autoResize(e) {
+        const textarea = e.target;
+        textarea.style.height = 'auto';
+        textarea.style.height = textarea.scrollHeight + 'px';
+    }
 </script>
 
 <section class="w-full">
@@ -38,6 +48,16 @@
         <div class="tab-content">
             {#if currentTab === 'Core'}
                 <div class="tab-panel" role="tabpanel">
+                    <!-- Add title input section -->
+                    <div class="title-container">
+                        <input
+                            type="text"
+                            bind:value={productTitle}
+                            placeholder="Untitled"
+                            class="title-input"
+                        />
+                    </div>
+
                     <div class="upload-boxes">
                         {#each previewImages as preview, i}
                             <div class="upload-box">
@@ -57,6 +77,16 @@
                                 </label>
                             </div>
                         {/each}
+                    </div>
+
+                    <!-- Add description section -->
+                    <div class="description-container">
+                        <textarea
+                            bind:value={productDescription}
+                            placeholder="Add a description..."
+                            class="description-input"
+                            on:input={autoResize}
+                        ></textarea>
                     </div>
                 </div>
             {:else if currentTab === 'Options'}
@@ -201,5 +231,60 @@
         width: 100%;
         height: 100%;
         object-fit: cover;
+    }
+
+    .title-container {
+        padding: 1rem 0;
+        margin-bottom: 1rem;
+        border-bottom: 1px solid #e2e8f0;
+    }
+
+    .title-input {
+        width: 100%;
+        font-size: 2rem;
+        font-weight: 600;
+        border: none;
+        background: transparent;
+        padding: 0.5rem 0;
+        color: #0f172a;
+    }
+
+    .title-input:focus {
+        outline: none;
+    }
+
+    .title-input::placeholder {
+        color: #94a3b8;
+        opacity: 0.8;
+    }
+
+    .description-container {
+        margin-top: 1rem;
+        padding: 1rem;
+        border: 1px solid #e2e8f0;
+        border-radius: 4px;
+        background: #f8fafc;
+    }
+
+    .description-input {
+        width: 100%;
+        min-height: 100px;
+        border: none;
+        background: transparent;
+        resize: none;
+        font-size: 0.95rem;
+        line-height: 1.5;
+        color: #1a1a1a;
+        padding: 0.5rem;
+        overflow-y: hidden;
+    }
+
+    .description-input:focus {
+        outline: none;
+    }
+
+    .description-input::placeholder {
+        color: #94a3b8;
+        opacity: 0.8;
     }
 </style>
