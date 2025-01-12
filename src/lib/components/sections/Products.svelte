@@ -1,6 +1,7 @@
 <script>
+    // Update tabs order
     let currentTab = 'Core';
-    const tabs = ['Core', 'Options', 'Properties', 'Variants', 'Branding'];
+    const tabs = ['Core', 'Options', 'Variants', 'Properties', 'Branding'];
     
     // Array to store preview URLs
     let previewImages = Array(5).fill(null);
@@ -55,6 +56,127 @@
         } finally {
             descriptionLoading = false;
         }
+    }
+
+    let optionsInput = '';
+    let optionsTable = [];
+    let optionsLoading = false;
+    let variantsTable = [];
+
+    // Add helper function to generate SKU
+    function generateSKU(variant) {
+        return Object.values(variant)
+            .map(value => value.substring(0, 3).toUpperCase())
+            .join('-');
+    }
+
+    // Add function to generate variants from options
+    function generateVariants() {
+        const groupedOptions = groupOptionsByType(optionsTable);
+        
+        // Create cartesian product of all options
+        const optionTypes = Object.keys(groupedOptions);
+        if (optionTypes.length === 0) return [];
+
+        const combinations = optionTypes.reduce((acc, type) => {
+            const values = groupedOptions[type].map(opt => opt.value);
+            if (acc.length === 0) {
+                return values.map(value => ({ [type]: value }));
+            }
+
+            return acc.flatMap(combo => 
+                values.map(value => ({
+                    ...combo,
+                    [type]: value
+                }))
+            );
+        }, []);
+
+        // Generate SKUs and create variant objects
+        variantsTable = combinations.map(combo => ({
+            ...combo,
+            sku: generateSKU(combo),
+            price: '0.00',
+            stock: '0'
+        }));
+    }
+
+    async function categorizeAndGenerateOptions() {
+        if (!optionsInput.trim()) return;
+        
+        optionsLoading = true;
+        try {
+            // Create context from current table and input
+            const currentOptions = optionsTable
+                .map(opt => `${opt.type}: ${opt.value}`)
+                .join(', ');
+
+            const response = await fetch('/api/chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    message: `STRICT JSON ONLY:
+                            Input values: ${optionsInput}
+                            Current options: [${currentOptions}]
+                            
+                            Rules:
+                            1. Categorize input values into appropriate types
+                            2. Each object needs exactly "type" and "value" properties
+                            3. NO probabilities or variations
+                            4. Keep values simple and direct
+                            5. Maximum 3 types
+                            
+                            Response format:
+                            [{"type": "Category", "value": "ExactValue"}]`
+                })
+            });
+
+            if (!response.ok) throw new Error('Failed to generate options');
+            
+            const data = await response.json();
+            try {
+                const jsonMatch = data.message.match(/\[.*\]/s);
+                if (jsonMatch) {
+                    const parsedData = JSON.parse(jsonMatch[0]);
+                    // Merge new options with existing ones, avoiding duplicates
+                    const newOptions = Array.isArray(parsedData) ? parsedData : [parsedData];
+                    const uniqueOptions = [...optionsTable];
+                    
+                    newOptions.forEach(newOpt => {
+                        const isDuplicate = uniqueOptions.some(
+                            existingOpt => 
+                                existingOpt.type.toLowerCase() === newOpt.type.toLowerCase() &&
+                                existingOpt.value.toLowerCase() === newOpt.value.toLowerCase()
+                        );
+                        if (!isDuplicate) {
+                            uniqueOptions.push(newOpt);
+                        }
+                    });
+                    
+                    optionsTable = uniqueOptions;
+                    generateVariants(); // Update variants whenever options change
+                }
+            } catch (e) {
+                console.error('Failed to parse options:', e);
+            }
+        } catch (error) {
+            console.error('Failed to generate options:', error);
+        } finally {
+            optionsLoading = false;
+            optionsInput = ''; // Reset input after generation
+        }
+    }
+
+    // Add helper function to group options by type
+    function groupOptionsByType(options) {
+        return options.reduce((groups, option) => {
+            const type = option.type;
+            if (!groups[type]) {
+                groups[type] = [];
+            }
+            groups[type].push(option);
+            return groups;
+        }, {});
     }
 </script>
 
@@ -135,11 +257,119 @@
                     </div>
                 </div>
             {:else if currentTab === 'Options'}
-                <div class="tab-panel" role="tabpanel">Options content here</div>
+                <div class="tab-panel" role="tabpanel">
+                    <div class="options-input-container">
+                        <input
+                            type="text"
+                            bind:value={optionsInput}
+                            placeholder="Enter product options..."
+                            class="options-input"
+                            disabled={optionsLoading}
+                        />
+                        <button 
+                            class="ai-button" 
+                            on:click={categorizeAndGenerateOptions}
+                            disabled={optionsLoading || !optionsInput.trim()}
+                        >
+                            {#if optionsLoading}
+                                <span class="loading-spinner"></span>
+                            {:else}
+                                <span class="sparkle">✨</span>
+                            {/if}
+                        </button>
+                    </div>
+
+                    {#if optionsTable.length > 0}
+                        <div class="options-table">
+                            <table>
+                                <tbody>
+                                    {#each Object.entries(groupOptionsByType(optionsTable)) as [type, options]}
+                                        <tr class="type-header">
+                                            <td colspan="2">{type}</td>
+                                        </tr>
+                                        {#each options as option}
+                                            <tr>
+                                                <td class="value-cell">
+                                                    {#if type.toLowerCase() === 'color'}
+                                                        <div class="color-value">
+                                                            <span class="color-circle" style="background-color: {option.value}"></span>
+                                                            {option.value}
+                                                        </div>
+                                                    {:else}
+                                                        {option.value}
+                                                    {/if}
+                                                </td>
+                                            </tr>
+                                        {/each}
+                                    {/each}
+                                </tbody>
+                            </table>
+                        </div>
+                    {/if}
+                </div>
+            {:else if currentTab === 'Variants'}
+                <div class="tab-panel" role="tabpanel">
+                    {#if variantsTable.length > 0}
+                        <div class="variants-table">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Variant</th>
+                                        <th class="text-right">Stock</th>
+                                        <th class="text-right">Price</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {#each variantsTable as variant}
+                                        <tr>
+                                            <td>
+                                                <div class="variant-info">
+                                                    <div class="variant-sku">{variant.sku}</div>
+                                                    <div class="variant-desc">
+                                                        {Object.entries(variant)
+                                                            .filter(([key]) => !['sku', 'price', 'stock'].includes(key))
+                                                            .map(([type, value]) => 
+                                                                type.toLowerCase() === 'color' 
+                                                                    ? `${type}: ${value}`
+                                                                    : `${type}: ${value}`
+                                                            )
+                                                            .join(' / ')}
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td class="text-right">
+                                                <input 
+                                                    type="number" 
+                                                    bind:value={variant.stock}
+                                                    class="variant-input"
+                                                    min="0"
+                                                />
+                                            </td>
+                                            <td class="text-right">
+                                                <div class="price-input-wrapper">
+                                                    <span class="currency">$</span>
+                                                    <input 
+                                                        type="number" 
+                                                        bind:value={variant.price}
+                                                        class="variant-input price"
+                                                        min="0"
+                                                        step="0.01"
+                                                    />
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    {/each}
+                                </tbody>
+                            </table>
+                        </div>
+                    {:else}
+                        <div class="no-variants">
+                            Add options in the Options tab to generate variants
+                        </div>
+                    {/if}
+                </div>
             {:else if currentTab === 'Properties'}
                 <div class="tab-panel" role="tabpanel">Properties content here</div>
-            {:else if currentTab === 'Variants'}
-                <div class="tab-panel" role="tabpanel">Variants content here</div>
             {:else if currentTab === 'Branding'}
                 <div class="tab-panel" role="tabpanel">Branding content here</div>
             {/if}
@@ -375,5 +605,183 @@
         border-top-color: #94a3b8;
         border-radius: 50%;
         animation: spin 1s linear infinite;
+    }
+
+    .options-input-container {
+        display: flex;
+        gap: 0.5rem;
+        margin-bottom: 1rem;
+        padding: 0.5rem;
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 4px;
+    }
+
+    .options-input {
+        flex: 1;
+        padding: 0.5rem;
+        border: none;
+        background: transparent;
+        font-size: 0.95rem;
+    }
+
+    .options-input:focus {
+        outline: none;
+    }
+
+    .options-table {
+        margin-top: 1rem;
+        border: none;
+        border-radius: 8px;
+        overflow: hidden;
+        background: white;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+
+    .options-table table {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+    }
+
+    .type-header td {
+        padding: 0.75rem 1rem;
+        background: #f8fafc;
+        font-weight: 500;
+        color: #64748b;
+        font-size: 0.875rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        border-bottom: 1px solid #e2e8f0;
+    }
+
+    .value-cell {
+        padding: 0.75rem 1rem;
+        color: #1a1a1a;
+        border-bottom: 1px solid #f1f5f9;
+    }
+
+    .options-table tr:last-child td {
+        border-bottom: none;
+    }
+
+    .color-value {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .color-circle {
+        width: 1.25rem;
+        height: 1.25rem;
+        border-radius: 50%;
+        border: 2px solid #f1f5f9;
+    }
+
+    .options-table tr:hover {
+        background: #f8fafc;
+    }
+
+    .variants-table {
+        margin-top: 1rem;
+        border: none;
+        border-radius: 12px;
+        overflow: hidden;
+        background: white;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+
+    .variants-table table {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+    }
+
+    .variants-table th {
+        padding: 1rem;
+        background: #f8fafc;
+        font-weight: 500;
+        color: #64748b;
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        border-bottom: 1px solid #e2e8f0;
+    }
+
+    .variants-table td {
+        padding: 1rem;
+        border-bottom: 1px solid #f1f5f9;
+        vertical-align: top;
+    }
+
+    .variant-info {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+    }
+
+    .variant-sku {
+        font-weight: 500;
+        color: #1a1a1a;
+    }
+
+    .variant-desc {
+        font-size: 0.813rem;
+        color: #64748b;
+        line-height: 1.4;
+    }
+
+    .variant-input {
+        width: 80px;
+        padding: 0.5rem;
+        border: 1px solid #e2e8f0;
+        border-radius: 6px;
+        font-size: 0.875rem;
+        text-align: right;
+        transition: all 0.2s;
+    }
+
+    .variant-input:focus {
+        outline: none;
+        border-color: #94a3b8;
+        box-shadow: 0 0 0 2px rgba(148, 163, 184, 0.1);
+    }
+
+    .price-input-wrapper {
+        position: relative;
+        display: inline-flex;
+        align-items: center;
+    }
+
+    .currency {
+        position: absolute;
+        left: 0.5rem;
+        color: #64748b;
+        font-size: 0.875rem;
+    }
+
+    .variant-input.price {
+        padding-left: 1.5rem;
+    }
+
+    .text-right {
+        text-align: right;
+    }
+
+    tr:hover .variant-sku {
+        color: #2563eb;
+    }
+
+    .variants-table tr:last-child td {
+        border-bottom: none;
+    }
+
+    .no-variants {
+        text-align: center;
+        padding: 2rem;
+        color: #64748b;
+        background: #f8fafc;
+        border-radius: 8px;
+        border: 1px dashed #e2e8f0;
     }
 </style>
