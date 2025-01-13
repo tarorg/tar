@@ -52,26 +52,66 @@
         }
     }
 
-    // Add new state for options
+    const MAX_GROUPS = 3;
     let optionsInput = '';
-    let optionsMode = 'G'; // 'G' for Group, 'O' for Options
+    let optionsMode = 'G';
     let optionsItems = [];
     let optionsLoading = false;
 
-    function toggleOptionsMode() {
-        optionsMode = optionsMode === 'G' ? 'O' : 'G';
+    // Helper to count unique groups
+    function getUniqueGroupCount() {
+        return new Set(optionsItems.filter(item => !item.type).map(item => item.value)).size;
     }
 
-    function handleOptionsSubmit() {
+    async function convertToGroupName(input) {
+        optionsLoading = true;
+        try {
+            const response = await fetch('/api/chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    message: `Convert this input "${input}" to the most appropriate product option group name. For example, if input is "red" or "blue", return "Color". If input is "small" or "large", return "Size". Return ONLY the group name, no other text or explanation.`
+                })
+            });
+
+            if (!response.ok) throw new Error('Failed to convert group name');
+            
+            const data = await response.json();
+            return data.message.trim();
+        } catch (error) {
+            console.error('Failed to convert group name:', error);
+            return input; // Fallback to original input
+        } finally {
+            optionsLoading = false;
+        }
+    }
+
+    async function handleOptionsSubmit() {
         if (!optionsInput.trim()) return;
+
+        if (optionsMode === 'G') {
+            if (getUniqueGroupCount() >= MAX_GROUPS) return;
+            
+            const groupName = await convertToGroupName(optionsInput.trim());
+            optionsItems = [...optionsItems, {
+                type: '', // No type for groups
+                value: groupName,
+                isGroup: true
+            }];
+        } else {
+            optionsItems = [...optionsItems, {
+                type: 'O',
+                value: optionsInput.trim()
+            }];
+        }
         
-        const newItem = {
-            type: optionsMode,
-            value: optionsInput.trim()
-        };
-        
-        optionsItems = [...optionsItems, newItem];
-        optionsInput = ''; // Clear input after submit
+        optionsInput = '';
+    }
+
+    $: isGroupLimitReached = getUniqueGroupCount() >= MAX_GROUPS;
+
+    function toggleOptionsMode() {
+        optionsMode = optionsMode === 'G' ? 'O' : 'G';
     }
 </script>
 
@@ -153,6 +193,7 @@
                     <div class="options-input-container">
                         <button 
                             class="mode-toggle" 
+                            class:disabled={optionsMode === 'G' && isGroupLimitReached}
                             on:click={toggleOptionsMode}
                             title={optionsMode === 'G' ? 'Group Mode' : 'Option Mode'}
                         >
@@ -163,13 +204,18 @@
                             bind:value={optionsInput}
                             placeholder={optionsMode === 'G' ? "Enter option group..." : "Enter option value..."}
                             class="options-input"
+                            disabled={optionsMode === 'G' && isGroupLimitReached}
                         />
                         <button 
                             class="ai-button" 
                             on:click={handleOptionsSubmit}
-                            disabled={!optionsInput.trim()}
+                            disabled={!optionsInput.trim() || (optionsMode === 'G' && isGroupLimitReached)}
                         >
-                            <span class="sparkle">✨</span>
+                            {#if optionsLoading}
+                                <span class="loading-spinner"></span>
+                            {:else}
+                                <span class="sparkle">✨</span>
+                            {/if}
                         </button>
                     </div>
 
@@ -179,8 +225,10 @@
                                 <tbody>
                                     {#each optionsItems as item}
                                         <tr>
-                                            <td class="option-item">
-                                                <span class="option-type">{item.type}</span>
+                                            <td class="option-item" class:is-group={!item.type}>
+                                                {#if item.type}
+                                                    <span class="option-type">{item.type}</span>
+                                                {/if}
                                                 <span class="option-value">{item.value}</span>
                                             </td>
                                         </tr>
@@ -503,5 +551,20 @@
 
     tr:last-child .option-item {
         border-bottom: none;
+    }
+
+    .option-item.is-group {
+        background: #f1f5f9;
+        font-weight: 500;
+    }
+
+    .mode-toggle.disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    .options-input:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
     }
 </style>

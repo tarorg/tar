@@ -7,3 +7,11 @@ O refers Options Values
 
 create a "options table" below
 - the table is single columned, no table header
+
+for 'G' ie. Options Group
+
+- when submitted it is queried to groq ai (refer ai.svelte page) 
+- ai corrects spelling, ensures or convert input to group title
+example if input value "red" entered group name is "color"
+- value is added to Options table with grey bg (no 'G' before)
+- max limit group limit 3 reached disable input field alone
