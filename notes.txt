@@ -1,0 +1,9 @@
+Options tab
+create a input field 
+(text G and O toggle on tap + input field + ✨ as submit)
+
+G refers Options Group
+O refers Options Values
+
+create a "options table" below
+- the table is single columned, no table header
