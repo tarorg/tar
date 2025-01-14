@@ -1,9 +1,13 @@
 Options tab
-create a input field 
-(text G and O toggle on tap + input field + ✨ as submit)
+create a input field "a"
+(text S,O and G toggle on tap + input field + ✨ as submit)
 
+S refers search
 G refers Options Group
 O refers Options Values
+
+add 3 rows under the input field "a"
+keep designs are modern
 
 create a "options table" below
 - the table is single columned, no table header
@@ -15,3 +19,12 @@ for 'G' ie. Options Group
 example if input value "red" entered group name is "color"
 - value is added to Options table with grey bg (no 'G' before)
 - max limit group limit 3 reached disable input field alone
+
+for 'O' ie. Options Value
+- - when submitted it is queried to groq ai 
+- ai corrects spelling, maps under group available in the the options table 
+- comma seperated consider as indiviual vales
+- and value is added to the options table under respective group (no 'O' before)
+- for color values add a small circle before with color
+
+options tab add 3 rows below the input field, add one more 's' option to the toggle
