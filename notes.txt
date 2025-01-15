@@ -28,3 +28,12 @@ for 'O' ie. Options Value
 - for color values add a small circle before with color
 
 options tab add 3 rows below the input field, add one more 's' option to the toggle
+
+add options tab next to core . 
+
+options tab content
+- everything is modern and minimal design
+- It has + add icon at top for create option group in the table
+- a table with subtable under each group
+- group has no columns adn it has + icon at end it creates subtable rows
+- sub table has three columns Identifier, Value, Stock 
