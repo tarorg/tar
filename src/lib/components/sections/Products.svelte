@@ -120,18 +120,17 @@
         selectedColorIndex = { option: optionIndex, sub: subIndex };
         const input = document.createElement('input');
         input.type = 'color';
-        input.value = options[optionIndex].subOptions[subIndex].color || '#000000'; // Use color property instead of value
+        input.value = options[optionIndex].subOptions[subIndex].color || '#000000';
         
         input.addEventListener('input', (e) => {
-            const color = e.target.value.toUpperCase(); // Ensure HEX is uppercase
+            const color = e.target.value.toUpperCase();
             options = options.map((opt, i) => {
                 if (i === optionIndex) {
                     const updatedSubOptions = opt.subOptions.map((subOpt, j) => {
                         if (j === subIndex) {
                             return { 
                                 ...subOpt, 
-                                color: color, // Store color separately from value
-                                value: color, // Store HEX value
+                                color: color, // Only update the color property
                                 identifier: color // Use HEX as identifier for colors
                             };
                         }
@@ -266,7 +265,6 @@
     
     // Add price to variant structure
     function generateVariants() {
-        // Filter out option groups with no sub-options
         const optionGroups = options
             .filter(option => option.subOptions && option.subOptions.length > 0)
             .map(option => option.subOptions.map(subOption => ({
@@ -276,7 +274,6 @@
                 imageUrl: subOption.imageUrl || null
             })));
 
-        // If no valid option groups, return empty array
         if (optionGroups.length === 0) {
             variants = [];
             return;
@@ -291,22 +288,29 @@
 
         const variantCombinations = cartesianProduct(optionGroups);
         
-        // Generate SKU prefix from product title
+        // Get first 3 letters of product title for SKU prefix
         const skuPrefix = productTitle
-            ? productTitle
-                .trim()
-                .toUpperCase()
-                .replace(/[^A-Z0-9]/g, '')
-                .slice(0, 3)
+            ? productTitle.trim().substring(0, 3).toUpperCase()
             : 'SKU';
 
-        variants = variantCombinations.map((combination, index) => ({
-            id: `${skuPrefix}-${combination.map(c => c.identifier).join('-')}`,
-            options: combination,
-            stock: 0,
-            price: 0,
-            compareAtPrice: 0
-        }));
+        variants = variantCombinations.map((combination) => {
+            // Generate SKU parts based on option types
+            const skuParts = combination.map(c => {
+                if (c.group.toLowerCase() === 'size') {
+                    return c.identifier; // Use identifier directly for size
+                } else {
+                    return c.value.trim().substring(0, 3).toUpperCase(); // First 3 letters for other options
+                }
+            });
+
+            return {
+                id: `${skuPrefix}-${skuParts.join('-')}`,
+                options: combination,
+                stock: 0,
+                price: 0,
+                compareAtPrice: 0
+            };
+        });
     }
 
     // Add search functionality
