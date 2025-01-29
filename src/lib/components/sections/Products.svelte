@@ -1,6 +1,6 @@
 <script>
     let currentTab = 'Core';
-    const tabs = ['Core', 'Options', 'Variants', 'Properties', 'Branding'];
+    const tabs = ['Core', 'Options', 'Variants', 'Details', 'Publish'];
     
     let previewImages = Array(5).fill(null);
     let productTitle = "";
@@ -333,7 +333,7 @@
     let viewDropdownOpen = false;
     const availableViews = [
         { id: 'inventory', label: 'Inventory', col: 'Stock' },
-        { id: 'price', label: 'Price', col: 'Price' }
+        { id: 'price', label: 'Price' }
     ];
 
     function formatNumber(value, type) {
@@ -347,6 +347,33 @@
         currentView = viewId;
         viewDropdownOpen = false;
     }
+
+    function handleVariantImageUpload(event, variant) {
+        const file = event.target.files[0];
+        if (file && file.type.startsWith('image/')) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                variants = variants.map(v => {
+                    if (v.id === variant.id) {
+                        return { ...v, variantImage: e.target.result };
+                    }
+                    return v;
+                });
+            };
+            reader.readAsDataURL(file);
+        }
+    }
+
+    // Simplified columns definition - only Variant and Stock
+    const variantColumns = [
+        { id: 'variant', label: 'Variant', sticky: true },
+        { id: 'stock', label: 'Stock' }
+    ];
+
+    // Remove view and filter state
+    let activeColumns = [...variantColumns];
+
+    // Remove other column-related functions
 </script>
 
 <section class="w-full">
@@ -536,107 +563,60 @@
                 </div>
             {:else if currentTab === 'Variants'}
                 <div class="tab-panel variants-panel" role="tabpanel">
-                    <div class="variants-header">
-                        <div class="header-controls">
+                    <div class="variants-content">
+                        <div class="variants-search-container">
                             <input
                                 type="text"
                                 bind:value={searchQuery}
                                 placeholder="Search variants..."
-                                class="search-input"
+                                class="variants-search-input"
                             />
-                            <div class="view-selector">
-                                <button 
-                                    class="view-button"
-                                    on:click={() => viewDropdownOpen = !viewDropdownOpen}
-                                >
-                                    <svg class="view-icon" viewBox="0 0 24 24" width="16" height="16">
-                                        <path fill="currentColor" d="M4 6h16v2H4V6zm0 5h16v2H4v-2zm0 5h16v2H4v-2z"/>
-                                    </svg>
-                                    <span class="view-label">{currentView}</span>
-                                    <svg class="chevron" viewBox="0 0 20 20" width="14" height="14">
-                                        <path d="M10 13l-5-5h10l-5 5z" fill="currentColor"/>
-                                    </svg>
-                                </button>
-                                {#if viewDropdownOpen}
-                                    <div class="view-dropdown" 
-                                         on:mouseleave={() => viewDropdownOpen = false}>
-                                        {#each availableViews as view}
-                                            <button 
-                                                class="view-option"
-                                                class:active={currentView === view.id}
-                                                on:click={() => handleViewChange(view.id)}
-                                            >
-                                                {view.label}
-                                            </button>
-                                        {/each}
-                                    </div>
-                                {/if}
-                            </div>
                         </div>
-                    </div>
-
-                    <div class="variants-content">
                         <div class="variants-table">
                             <table>
-                                <thead>
-                                    <tr>
-                                        <th class="sticky-col text-left">Variant</th>
-                                        {#if currentView === 'inventory'}
-                                            <th class="text-left notion-col">Stock</th>
-                                        {:else if currentView === 'price'}
-                                            <th class="text-left notion-col">Price</th>
-                                            <th class="text-left notion-col">Compare</th>
-                                        {/if}
-                                    </tr>
-                                </thead>
                                 <tbody>
                                     {#each filteredVariants as variant}
                                         <tr>
-                                            <td class="sticky-col variant-id">
+                                            <td class="sticky-col">
                                                 <div class="variant-preview compact">
-                                                    {#if variant.options[0]?.imageUrl}
-                                                        <img src={variant.options[0].imageUrl} 
-                                                             alt="Variant preview" 
-                                                             class="variant-image" />
-                                                    {/if}
+                                                    <div class="variant-image-upload">
+                                                        <input
+                                                            type="file"
+                                                            accept="image/*"
+                                                            id="variant-upload-{variant.id}"
+                                                            on:change={(e) => handleVariantImageUpload(e, variant)}
+                                                            class="hidden-input"
+                                                        />
+                                                        <label for="variant-upload-{variant.id}" class="variant-upload-label">
+                                                            {#if variant.variantImage}
+                                                                <img src={variant.variantImage} 
+                                                                     alt="Variant {variant.id}" 
+                                                                     class="variant-preview-image" />
+                                                            {:else}
+                                                                <span class="upload-icon">+</span>
+                                                            {/if}
+                                                        </label>
+                                                    </div>
                                                     <div class="variant-details">
-                                                        <span class="variant-code">{variant.id}</span>
-                                                        <span class="variant-options">
+                                                        <span class="variant-title">
                                                             {variant.options.map(opt => opt.value).join(' ')}
                                                         </span>
+                                                        <span class="variant-sku">{variant.id}</span>
                                                     </div>
                                                 </div>
                                             </td>
-                                            {#if currentView === 'inventory'}
-                                                <td class="notion-cell">
-                                                    <div class="notion-input" 
-                                                         contenteditable="true" 
-                                                         on:keypress={(e) => {
-                                                             if (!/^\d*$/.test(e.key)) e.preventDefault();
-                                                         }}
-                                                         on:blur={(e) => variant.stock = parseInt(e.target.textContent) || 0}>
-                                                        {variant.stock}
-                                                    </div>
-                                                </td>
-                                            {:else if currentView === 'price'}
-                                                <td class="notion-cell">
-                                                    <div class="notion-input" 
+                                            <td>
+                                                <div class="notion-cell">
+                                                    <div class="notion-input inventory-value" 
                                                          contenteditable="true"
-                                                         on:keypress={(e) => {
-                                                             if (!/^\d*\.?\d*$/.test(e.key)) e.preventDefault();
-                                                         }}
-                                                         on:blur={(e) => variant.price = parseFloat(e.target.textContent) || 0}>
-                                                        {formatNumber(variant.price, 'price')}
+                                                         on:blur={(e) => {
+                                                             const value = parseInt(e.target.textContent) || 0;
+                                                             variant.stock = value;
+                                                         }}>
+                                                        {variant.stock || 0}
                                                     </div>
-                                                </td>
-                                                <td class="notion-cell">
-                                                    <div class="notion-input" 
-                                                         contenteditable="true"
-                                                         on:blur={(e) => variant.compareAtPrice = parseFloat(e.target.textContent) || 0}>
-                                                        {formatNumber(variant.compareAtPrice, 'price')}
-                                                    </div>
-                                                </td>
-                                            {/if}
+                                                </div>
+                                            </td>
                                         </tr>
                                     {/each}
                                 </tbody>
@@ -1202,6 +1182,8 @@
         border-radius: 4px;
         overflow: hidden;
         background: white;
+        table-layout: fixed;
+        width: 100%;
     }
 
     .variants-table table {
@@ -1280,112 +1262,13 @@
         background: white;
         z-index: 10;
         box-shadow: 2px 0 4px rgba(0, 0, 0, 0.05);
+        width: auto !important;
+        min-width: 300px !important;
+        max-width: none !important;
     }
 
     .variant-preview {
         display: flex;
-        align-items: center;
-        gap: 0.5rem;
-    }
-
-    .variant-id {
-        font-family: monospace;
-        font-size: 0.875rem;
-    }
-
-    .variant-option {
-        white-space: nowrap;
-    }
-
-    .option-preview {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-    }
-
-    .minimal-input {
-        width: 100%;
-        padding: 0.375rem;
-        border: 1px solid transparent;
-        border-radius: 4px;
-        font-size: 0.875rem;
-        transition: all 0.2s;
-        background: #f8fafc;
-    }
-
-    .minimal-input:hover {
-        background: #f1f5f9;
-    }
-
-    .minimal-input:focus {
-        outline: none;
-        border-color: #1e40af;
-        background: white;
-    }
-
-    .price-input {
-        display: flex;
-        align-items: center;
-        background: #f8fafc;
-        border-radius: 4px;
-        padding: 0 0.5rem;
-    }
-
-    .currency {
-        color: #64748b;
-        font-size: 0.875rem;
-    }
-
-    .variants-table {
-        overflow-x: auto;
-        max-height: 70vh;
-        position: relative;
-    }
-
-    .variants-table table {
-        border-spacing: 0;
-    }
-
-    .variants-table th {
-        font-weight: 500;
-        color: #1a1a1a;
-        padding: 0.75rem 1rem;
-    }
-
-    .variants-table td {
-        padding: 0.375rem 1rem;
-    }
-
-    .variants-table th {
-        background: white;
-        position: sticky;
-        top: 0;
-        z-index: 20;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-    }
-
-    .variants-table td {
-        border-bottom: 1px solid #f1f5f9;
-    }
-
-    .variants-table tr:hover td {
-        background: #f8fafc;
-    }
-
-    .variant-details {
-        display: flex;
-        flex-direction: column;
-        gap: 0.125rem;
-        min-width: 0; /* Allow text truncation */
-    }
-
-    .variant-code {
-        font-family: monospace;
-        font-size: 0.875rem;
-        color: #1a1a1a;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
     }
 
     .variant-options {
@@ -1466,6 +1349,8 @@
     .variant-preview.compact {
         padding: 0.25rem 0;
         gap: 0.375rem;
+        width: 100%;
+        max-width: 100%;
     }
 
     .variant-info {
@@ -1583,6 +1468,9 @@
 
     .notion-cell {
         padding: 0;
+        width: 80px; /* Increased from 50px */
+        min-width: 80px; /* Increased from 50px */
+        max-width: 80px; /* Increased from 50px */
     }
 
     .notion-input {
@@ -1653,8 +1541,10 @@
     .variants-panel {
         display: flex;
         flex-direction: column;
-        height: calc(100vh - 120px);
-        overflow: hidden;
+        height: 100%;
+        min-height: 400px;
+        overflow: hidden; /* Changed from visible */
+        position: relative; /* Added */
     }
 
     .variants-header {
@@ -1738,8 +1628,17 @@
 
     .variants-content {
         flex: 1;
+        position: relative;
+        overflow: hidden; /* Changed from visible */
+        display: flex;
+        flex-direction: column;
+    }
+
+    .variants-table {
+        position: relative;
         overflow: auto;
-        padding: 0;
+        height: 100%;
+        min-height: 400px;
     }
 
     .variants-table {
@@ -1802,5 +1701,318 @@
     .notion-input {
         text-align: right; /* Align numbers to the right */
         padding: 0.25rem 0.375rem; /* Reduced padding */
+    }
+
+    .variants-header {
+        border-bottom: 1px solid #e2e8f0;
+        padding: 0.5rem;
+        background: white;
+    }
+
+    .search-header {
+        padding: 0.5rem !important;
+        background: white !important;
+    }
+
+    .filter-header {
+        width: 80px !important;
+        min-width: 80px !important;
+        max-width: 80px !important;
+        padding: 0.5rem !important;
+        background: white !important;
+    }
+
+    .search-wrapper {
+        width: 100%;
+        padding-right: 0.5rem;
+    }
+
+    .table-search-input {
+        width: 100%;
+        padding: 0.375rem 0.5rem;
+        border: 1px solid #e2e8f0;
+        border-radius: 0.25rem;
+        font-size: 0.75rem;
+        background: #f8fafc;
+        transition: all 0.2s;
+        max-width: none;
+    }
+
+    .table-search-input:focus {
+        outline: none;
+        border-color: #1e40af;
+        background: white;
+        box-shadow: 0 0 0 2px rgba(30, 64, 175, 0.1);
+    }
+
+    .filter-wrapper {
+        position: relative;
+        width: 100%;
+        z-index: 100;
+    }
+
+    .filter-button {
+        width: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0.375rem 0.5rem;
+        border: 1px solid #e2e8f0;
+        border-radius: 0.25rem;
+        background: #f8fafc;
+        color: #64748b;
+        font-size: 0.75rem;
+        transition: all 0.2s;
+        position: relative;
+        z-index: 50;
+    }
+
+    .filter-button:hover {
+        background: white;
+        border-color: #1e40af;
+    }
+
+    .chevron-icon {
+        color: #64748b;
+        margin-left: 0.25rem;
+    }
+
+    .filter-dropdown {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background: white;
+        border: 1px solid #e2e8f0;
+        border-radius: 0.25rem;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        z-index: 1000;
+    }
+
+    .filter-option {
+        width: 100%;
+        text-align: left;
+        padding: 0.375rem 0.5rem;
+        border: none;
+        background: transparent;
+        color: #64748b;
+        font-size: 0.75rem;
+        cursor: pointer;
+        transition: background 0.2s;
+    }
+
+    .filter-option:hover {
+        background: #f8fafc;
+        color: #1e40af;
+    }
+
+    .filter-option.active {
+        background: #f1f5f9;
+        color: #1e40af;
+        font-weight: 500;
+    }
+
+    .variant-image-upload {
+        position: relative;
+        width: 2rem;
+        height: 2rem;
+        flex-shrink: 0;
+        margin-right: 0.5rem;
+    }
+
+    .variant-upload-label {
+        width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #f8fafc;
+        border: 1px dashed #e2e8f0;
+        border-radius: 0.25rem;
+        cursor: pointer;
+        transition: all 0.2s;
+        overflow: hidden;
+    }
+
+    .variant-upload-label:hover {
+        background: #f1f5f9;
+        border-color: #94a3b8;
+    }
+
+    .variant-preview-image {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .inventory-value {
+        font-size: 1rem !important;
+        font-weight: 600 !important;
+        color: #0f172a !important;
+    }
+
+    .notion-input.inventory-value {
+        text-align: center !important;
+        padding: 0.5rem !important;
+        min-height: 2.5rem !important;
+        font-size: 1.25rem !important; /* Increased from 1rem */
+    }
+
+    .notion-input.inventory-value:hover {
+        background: #f1f5f9 !important;
+    }
+
+    .notion-input.inventory-value:focus {
+        background: white !important;
+        outline: 2px solid #1e40af !important;
+    }
+
+    .variant-preview.compact {
+        display: flex;
+        align-items: center;
+        padding: 0.375rem 0;
+    }
+
+    .sticky-col {
+        min-width: 200px !important;
+        max-width: none !important;
+    }
+
+    .view-filter {
+        padding: 1rem;
+        border-bottom: 1px solid #e2e8f0;
+        background: white;
+        position: relative;
+    }
+
+    .modern-dropdown {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        width: 140px;
+        padding: 0.5rem 0.75rem;
+        background: white;
+        border: 1px solid #e2e8f0;
+        border-radius: 0.375rem;
+        color: #1a1a1a;
+        font-size: 0.875rem;
+        transition: all 0.2s;
+        cursor: pointer;
+    }
+
+    .modern-dropdown:hover {
+        border-color: #94a3b8;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+    }
+
+    .view-label {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .view-icon {
+        color: #64748b;
+    }
+
+    .dropdown-arrow {
+        color: #94a3b8;
+        transition: transform 0.2s;
+    }
+
+    .modern-dropdown[aria-expanded="true"] .dropdown-arrow {
+        transform: rotate(180deg);
+    }
+
+    .modern-dropdown-menu {
+        position: absolute;
+        top: calc(100% - 0.5rem);
+        left: 1rem;
+        width: 140px;
+        background: white;
+        border: 1px solid #e2e8f0;
+        border-radius: 0.375rem;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        z-index: 50;
+        overflow: hidden;
+    }
+
+    .dropdown-option {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        width: 100%;
+        padding: 0.5rem 0.75rem;
+        background: transparent;
+        border: none;
+        color: #1a1a1a;
+        font-size: 0.875rem;
+        text-align: left;
+        transition: all 0.2s;
+        cursor: pointer;
+    }
+
+    .dropdown-option:hover {
+        background: #f8fafc;
+    }
+
+    .dropdown-option.active {
+        background: #f1f5f9;
+        color: #1e40af;
+    }
+
+    .dropdown-option.active .view-icon {
+        color: #1e40af;
+    }
+
+    .variants-search {
+        padding: 1rem;
+        border-bottom: 1px solid #e2e8f0;
+        background: white;
+    }
+
+    .variants-search-input {
+        width: 100%;
+        padding: 0.75rem 1rem;
+        border: none;
+        font-size: 0.875rem;
+        background: transparent;
+        transition: all 0.2s;
+    }
+
+    .variants-search-input:focus {
+        outline: none;
+    }
+
+    .variants-search-input::placeholder {
+        color: #94a3b8;
+    }
+
+    .variant-details {
+        display: flex;
+        flex-direction: column;
+        gap: 0.125rem;
+        min-width: 0;
+    }
+
+    .variant-title {
+        font-size: 0.875rem;
+        font-weight: 500;
+        color: #1a1a1a;
+    }
+
+    .variant-sku {
+        font-size: 0.75rem;
+        color: #64748b;
+    }
+
+    /* Update table styles to remove header visibility */
+    .variants-table thead {
+        display: none;
+    }
+
+    /* Adjust spacing for table without header */
+    .variants-table {
+        margin-top: 0;
     }
 </style>
