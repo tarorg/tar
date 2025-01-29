@@ -1,6 +1,6 @@
 <script>
-    import './products.css';
-    let currentTab = 'Core';
+  import '$lib/styles/global.css';
+  let currentTab = 'Core';
     const tabs = ['Core', 'Options', 'Variants', 'Details', 'Publish'];
     
     let previewImages = Array(5).fill(null);
