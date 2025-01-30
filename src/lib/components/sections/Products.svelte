@@ -1,6 +1,6 @@
 <script>
     let currentTab = 'Core';
-    const tabs = ['Core', 'Options', 'Variants', 'Details', 'Publish'];
+    const tabs = ['Core', 'Options', 'Variants', 'Detail', 'Publish'];
     
     let previewImages = Array(5).fill(null);
     let productTitle = "";
