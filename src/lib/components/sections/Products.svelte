@@ -1,6 +1,7 @@
 <script>
+    import Editor from '$lib/components/editor/Editor.svelte';
     let currentTab = 'Core';
-    const tabs = ['Core', 'Options', 'Variants', 'Detail', 'Publish'];
+    const tabs = ['Core', 'Options', 'Variants', 'Details', 'Publish'];
     
     let previewImages = Array(5).fill(null);
     let productTitle = "";
@@ -624,7 +625,16 @@
                         </div>
                     </div>
                 </div>
-            {:else if currentTab === 'Properties'}
+            {:else if currentTab === 'Details'}
+                <div class="tab-panel" role="tabpanel">
+                    <div class="details-container">
+                        <Editor 
+                            content="" 
+                            placeholder="Add detailed product information..." 
+                        />
+                    </div>
+                </div>
+            {:else if currentTab === 'Publish'}
                 <div class="tab-panel" role="tabpanel">Properties content here</div>
             {:else if currentTab === 'Branding'}
                 <div class="tab-panel" role="tabpanel">Branding content here</div>
@@ -2014,5 +2024,11 @@
     /* Adjust spacing for table without header */
     .variants-table {
         margin-top: 0;
+    }
+
+    .details-container {
+        padding: 1rem;
+        background: white;
+        border-radius: 0.375rem;
     }
 </style>
